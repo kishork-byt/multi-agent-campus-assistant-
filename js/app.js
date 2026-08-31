@@ -9,6 +9,34 @@ const App = {
   init: function() {
     const isCollapsed = localStorage.getItem('SIDEBAR_COLLAPSED') === 'true';
     if (isCollapsed) document.body.classList.add('sidebar-collapsed');
+    Store.syncStudentsFromBackend().then(() => {
+      if (this.currentRoute === 'students-management') {
+        this.renderCurrentView();
+      }
+    });
+    Store.syncFacultyFromBackend().then(() => {
+      if (this.currentRoute === 'staff-management') {
+        this.renderCurrentView();
+      }
+    });
+    Store.syncEventsFromBackend().then(() => {
+      if (this.currentRoute === 'events-management' || this.currentRoute === 'events') {
+        this.renderCurrentView();
+      }
+    });
+    Store.syncAnnouncementsFromBackend().then(() => {
+      if (this.currentRoute === 'announcements') {
+        this.renderCurrentView();
+      }
+    });
+    Store.syncCommunityFromBackend().then(() => {
+      if (this.currentRoute === 'community' || this.currentRoute === 'community-moderation') {
+        this.renderCurrentView();
+      }
+    });
+    Store.syncNotificationsFromBackend().then(() => {
+      this.renderLayout();
+    });
     this.bindEvents();
     this.handleRouting();
     window.addEventListener('hashchange', () => this.handleRouting());
@@ -37,6 +65,23 @@ const App = {
       } else if (!e.target.closest('.notification-popover')) {
         const pop = document.getElementById('notification-popover');
         if (pop) pop.classList.remove('active');
+      }
+
+      const itemEl = e.target.closest('.notification-item');
+      if (itemEl && itemEl.dataset.notifId) {
+        Store.markNotificationRead(itemEl.dataset.notifId).then(() => {
+          this.renderLayout();
+          const pop = document.getElementById('notification-popover');
+          if (pop) pop.classList.add('active');
+        });
+      }
+
+      if (e.target.closest('#mark-all-read-btn')) {
+        Store.markAllNotificationsRead(this.currentPortal).then(() => {
+          this.renderLayout();
+          const pop = document.getElementById('notification-popover');
+          if (pop) pop.classList.add('active');
+        });
       }
     });
   },
@@ -106,6 +151,11 @@ const App = {
     if (sidebar) sidebar.classList.remove('mobile-open');
 
     this.renderLayout();
+
+    if (this.currentRoute === 'community' || this.currentRoute === 'community-moderation') {
+      Store.syncCommunityFromBackend().then(() => this.renderCurrentView());
+    }
+    Store.syncNotificationsFromBackend().then(() => this.renderLayout());
   },
 
   renderLayout: function() {
@@ -117,29 +167,42 @@ const App = {
       <div class="main-wrapper">
         ${NavbarComponent.render(this.currentPortal, this.currentRoute)}
         
-        <!-- Notification Popover -->
-        <div class="notification-popover" id="notification-popover">
-          <div class="notification-header">
-            <strong style="font-size: 0.95rem;">Notifications</strong>
-            <button class="btn btn-ghost btn-sm" onclick="alert('Cleared all notifications')">Clear</button>
-          </div>
-          <div class="notification-list">
-            <div class="notification-item unread">
-              <div class="notification-dot"></div>
-              <div>
-                <strong style="font-size: 0.85rem; display: block;">CS-401 Lab Score Released</strong>
-                <span style="font-size: 0.78rem; color: var(--text-muted);">You scored 98/100 • 10 mins ago</span>
+        ${(() => {
+          const notifications = Store.getNotifications(this.currentPortal);
+          const unreadCount = Store.getUnreadNotificationCount(this.currentPortal);
+
+          return `
+            <!-- Notification Popover -->
+            <div class="notification-popover" id="notification-popover">
+              <div class="notification-header" style="display: flex; justify-content: space-between; align-items: center; padding: 0.85rem 1rem; border-bottom: 1px solid var(--border-color);">
+                <div>
+                  <strong style="font-size: 0.95rem;">Notifications</strong>
+                  ${unreadCount > 0 ? `<span class="badge badge-danger" style="margin-left: 0.4rem; font-size: 0.7rem;">${unreadCount} unread</span>` : ''}
+                </div>
+                <button class="btn btn-ghost btn-sm" id="mark-all-read-btn" style="font-size: 0.75rem;">Mark All Read</button>
+              </div>
+              <div class="notification-list" style="max-height: 360px; overflow-y: auto;">
+                ${notifications.length === 0 ? `
+                  <div style="padding: 1.5rem; text-align: center; color: var(--text-muted); font-size: 0.85rem;">
+                    No notifications currently available.
+                  </div>
+                ` : notifications.map(n => `
+                  <div class="notification-item ${n.read ? '' : 'unread'}" data-notif-id="${n.id || n._id}" style="cursor: pointer; padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-color); display: flex; gap: 0.6rem; align-items: flex-start; background: ${n.read ? 'transparent' : 'rgba(124, 58, 237, 0.08)'}; transition: background 0.2s;">
+                    <div class="notification-dot" style="width: 8px; height: 8px; border-radius: 50%; background: ${n.read ? 'transparent' : '#ef4444'}; margin-top: 5px; flex-shrink: 0;"></div>
+                    <div style="flex-grow: 1;">
+                      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.15rem;">
+                        <strong style="font-size: 0.85rem; display: block; color: var(--text-main);">${n.title}</strong>
+                        <span class="badge badge-${n.type === 'System' ? 'admin' : n.type === 'Community' ? 'primary' : 'staff'}" style="font-size: 0.65rem; padding: 1px 5px;">${n.type || 'Notice'}</span>
+                      </div>
+                      <p style="font-size: 0.78rem; color: var(--text-muted); margin: 0; line-height: 1.35;">${n.desc}</p>
+                      <span style="font-size: 0.7rem; color: var(--text-muted); display: block; margin-top: 0.25rem;">${n.time || 'Recently'}</span>
+                    </div>
+                  </div>
+                `).join('')}
               </div>
             </div>
-            <div class="notification-item">
-              <div class="notification-dot" style="background: transparent;"></div>
-              <div>
-                <strong style="font-size: 0.85rem; display: block;">Campus AI Hackathon 2026</strong>
-                <span style="font-size: 0.78rem; color: var(--text-muted);">Registration closes Sept 10 • 2 hours ago</span>
-              </div>
-            </div>
-          </div>
-        </div>
+          `;
+        })()}
 
         <main class="main-content" id="main-content">
           <!-- View dynamically rendered here -->
@@ -149,9 +212,12 @@ const App = {
       <!-- Modals Container -->
       ${ModalsComponent.renderAddStudentModal()}
       ${ModalsComponent.renderAddStaffModal()}
+      ${ModalsComponent.renderEditStaffModal()}
       ${ModalsComponent.renderNewAnnouncementModal()}
+      ${ModalsComponent.renderEditAnnouncementModal()}
       ${ModalsComponent.renderScheduleFacultyEventModal()}
       ${ModalsComponent.renderReserveVenueModal()}
+      ${ModalsComponent.renderEditVenueModal()}
       ${ModalsComponent.renderEventDetailsModal()}
       ${ModalsComponent.renderCreateAnonymousPostModal()}
     `;

@@ -106,6 +106,74 @@ const ModalsComponent = {
     `;
   },
 
+  renderEditStaffModal: function() {
+    return `
+      <div class="modal-overlay" id="modal-edit-staff">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3 class="card-title"><i data-lucide="user-check"></i> Edit Faculty Record</h3>
+            <button class="btn-icon" onclick="ModalsComponent.closeModal('modal-edit-staff')">
+              <i data-lucide="x"></i>
+            </button>
+          </div>
+          <div class="modal-body">
+            <form id="form-edit-staff" onsubmit="event.preventDefault(); ModalsComponent.handleEditStaffSubmit();">
+              <input type="hidden" id="edit-staff-id">
+              <div class="form-group">
+                <label class="form-label">Faculty Full Name</label>
+                <input type="text" id="edit-staff-name" class="input-field" placeholder="e.g. Dr. Alan Grant" required>
+              </div>
+              <div class="grid-cols-2">
+                <div class="form-group">
+                  <label class="form-label">Department</label>
+                  <select id="edit-staff-dept" class="input-field select-field">
+                    <option>Computer Science & Engineering</option>
+                    <option>Data Science & AI</option>
+                    <option>Electrical Eng.</option>
+                    <option>Biotechnology</option>
+                    <option>Mechanical Eng.</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Designation / Role</label>
+                  <select id="edit-staff-role" class="input-field select-field">
+                    <option>Assistant Professor</option>
+                    <option>Associate Professor</option>
+                    <option>Professor</option>
+                    <option>Head of Department</option>
+                    <option>Lead AI Researcher</option>
+                  </select>
+                </div>
+              </div>
+              <div class="grid-cols-2">
+                <div class="form-group">
+                  <label class="form-label">Official Email</label>
+                  <input type="email" id="edit-staff-email" class="input-field" placeholder="a.grant@university.edu" required>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Courses Assigned</label>
+                  <input type="number" id="edit-staff-courses" class="input-field" min="0" max="10" required>
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Faculty Status</label>
+                <select id="edit-staff-status" class="input-field select-field">
+                  <option value="Active">Active</option>
+                  <option value="On Leave">On Leave</option>
+                  <option value="On Sabbatical">On Sabbatical</option>
+                </select>
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="ModalsComponent.closeModal('modal-edit-staff')">Cancel</button>
+            <button class="btn btn-primary" onclick="document.getElementById('form-edit-staff').requestSubmit()">Save Changes</button>
+          </div>
+        </div>
+      </div>
+    `;
+  },
+
   renderNewAnnouncementModal: function() {
     return `
       <div class="modal-overlay" id="modal-add-announcement">
@@ -146,6 +214,64 @@ const ModalsComponent = {
           <div class="modal-footer">
             <button class="btn btn-secondary" onclick="ModalsComponent.closeModal('modal-add-announcement')">Cancel</button>
             <button class="btn btn-primary" onclick="document.getElementById('form-add-announcement').requestSubmit()">Publish Broadcast</button>
+          </div>
+        </div>
+      </div>
+    `;
+  },
+
+  renderEditAnnouncementModal: function() {
+    return `
+      <div class="modal-overlay" id="modal-edit-announcement">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3 class="card-title"><i data-lucide="megaphone"></i> Edit Campus Announcement</h3>
+            <button class="btn-icon" onclick="ModalsComponent.closeModal('modal-edit-announcement')">
+              <i data-lucide="x"></i>
+            </button>
+          </div>
+          <div class="modal-body">
+            <form id="form-edit-announcement" onsubmit="event.preventDefault(); ModalsComponent.handleEditAnnouncementSubmit();">
+              <input type="hidden" id="edit-ann-id">
+              <div class="form-group">
+                <label class="form-label">Announcement Title</label>
+                <input type="text" id="edit-ann-title" class="input-field" placeholder="e.g. Campus Holiday Notice" required>
+              </div>
+              <div class="grid-cols-2">
+                <div class="form-group">
+                  <label class="form-label">Target Audience</label>
+                  <select id="edit-ann-target" class="input-field select-field">
+                    <option>All Students & Staff</option>
+                    <option>All Users</option>
+                    <option>Students Only</option>
+                    <option>Staff Only</option>
+                    <option>Faculty Heads</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Priority Level</label>
+                  <select id="edit-ann-priority" class="input-field select-field">
+                    <option>Normal</option>
+                    <option>Medium</option>
+                    <option>High</option>
+                  </select>
+                </div>
+              </div>
+              <div class="grid-cols-2">
+                <div class="form-group">
+                  <label class="form-label">Author / Publisher</label>
+                  <input type="text" id="edit-ann-author" class="input-field" placeholder="e.g. Dean of Academics" required>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Publication Date</label>
+                  <input type="text" id="edit-ann-date" class="input-field" placeholder="e.g. Aug 28, 2026" required>
+                </div>
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="ModalsComponent.closeModal('modal-edit-announcement')">Cancel</button>
+            <button class="btn btn-primary" onclick="document.getElementById('form-edit-announcement').requestSubmit()">Save Changes</button>
           </div>
         </div>
       </div>
@@ -245,6 +371,69 @@ const ModalsComponent = {
           <div class="modal-footer">
             <button class="btn btn-secondary" onclick="ModalsComponent.closeModal('modal-reserve-venue')">Cancel</button>
             <button class="btn btn-primary" onclick="document.getElementById('form-reserve-venue').requestSubmit()">Submit Venue Request</button>
+          </div>
+        </div>
+      </div>
+    `;
+  },
+
+  renderEditVenueModal: function() {
+    return `
+      <div class="modal-overlay" id="modal-edit-venue">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3 class="card-title"><i data-lucide="calendar"></i> Edit Campus Event / Reservation</h3>
+            <button class="btn-icon" onclick="ModalsComponent.closeModal('modal-edit-venue')">
+              <i data-lucide="x"></i>
+            </button>
+          </div>
+          <div class="modal-body">
+            <form id="form-edit-venue" onsubmit="event.preventDefault(); ModalsComponent.handleEditVenueSubmit();">
+              <input type="hidden" id="edit-venue-id">
+              <div class="form-group">
+                <label class="form-label">Event Name</label>
+                <input type="text" id="edit-venue-title" class="input-field" placeholder="e.g. Annual Tech Summit" required>
+              </div>
+              <div class="grid-cols-2">
+                <div class="form-group">
+                  <label class="form-label">Organizer / Department</label>
+                  <input type="text" id="edit-venue-organizer" class="input-field" placeholder="e.g. CS Department" required>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Requested Venue</label>
+                  <select id="edit-venue-name" class="input-field select-field">
+                    <option>Main Auditorium</option>
+                    <option>Tech Lab 102</option>
+                    <option>Innovation Hub</option>
+                    <option>Seminar Room B</option>
+                    <option>Sports Arena</option>
+                    <option>Auditorium A</option>
+                  </select>
+                </div>
+              </div>
+              <div class="grid-cols-2">
+                <div class="form-group">
+                  <label class="form-label">Event Date</label>
+                  <input type="text" id="edit-venue-date" class="input-field" placeholder="e.g. Oct 15, 2026" required>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Approval Status</label>
+                  <select id="edit-venue-status" class="input-field select-field">
+                    <option value="Approved">Approved</option>
+                    <option value="Pending Approval">Pending Approval</option>
+                    <option value="Rejected">Rejected</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Description / Notes</label>
+                <input type="text" id="edit-venue-details" class="input-field" placeholder="Official campus venue reservation request.">
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="ModalsComponent.closeModal('modal-edit-venue')">Cancel</button>
+            <button class="btn btn-primary" onclick="document.getElementById('form-edit-venue').requestSubmit()">Save Changes</button>
           </div>
         </div>
       </div>
@@ -393,6 +582,57 @@ const ModalsComponent = {
     App.renderCurrentView();
   },
 
+  openEditStaffModal: function(staffId) {
+    const staff = Store.getStaffList().find(s => s.id === staffId || s._id === staffId);
+    if (!staff) return;
+
+    const idEl = document.getElementById('edit-staff-id');
+    const nameEl = document.getElementById('edit-staff-name');
+    const deptEl = document.getElementById('edit-staff-dept');
+    const roleEl = document.getElementById('edit-staff-role');
+    const emailEl = document.getElementById('edit-staff-email');
+    const coursesEl = document.getElementById('edit-staff-courses');
+    const statusEl = document.getElementById('edit-staff-status');
+
+    if (idEl) idEl.value = staff.id || staff._id;
+    if (nameEl) nameEl.value = staff.name || '';
+    if (deptEl) deptEl.value = staff.dept || 'Computer Science & Engineering';
+    if (roleEl) roleEl.value = staff.role || 'Assistant Professor';
+    if (emailEl) emailEl.value = staff.email || '';
+    if (coursesEl) coursesEl.value = staff.courses !== undefined ? staff.courses : 2;
+    if (statusEl) statusEl.value = staff.status || 'Active';
+
+    this.openModal('modal-edit-staff');
+  },
+
+  handleEditStaffSubmit: function() {
+    const idEl = document.getElementById('edit-staff-id');
+    const nameEl = document.getElementById('edit-staff-name');
+    const deptEl = document.getElementById('edit-staff-dept');
+    const roleEl = document.getElementById('edit-staff-role');
+    const emailEl = document.getElementById('edit-staff-email');
+    const coursesEl = document.getElementById('edit-staff-courses');
+    const statusEl = document.getElementById('edit-staff-status');
+
+    if (!idEl || !nameEl || !nameEl.value.trim()) {
+      alert('Please enter faculty name');
+      return;
+    }
+
+    const staffId = idEl.value;
+    Store.updateStaff(staffId, {
+      name: nameEl.value.trim(),
+      dept: deptEl.value,
+      role: roleEl.value,
+      email: emailEl.value.trim(),
+      courses: parseInt(coursesEl.value) || 0,
+      status: statusEl.value
+    });
+
+    this.closeModal('modal-edit-staff');
+    App.renderCurrentView();
+  },
+
   handleAnnouncementSubmit: function() {
     const titleEl = document.getElementById('new-ann-title');
     const targetEl = document.getElementById('new-ann-target');
@@ -412,6 +652,54 @@ const ModalsComponent = {
     titleEl.value = '';
 
     this.closeModal('modal-add-announcement');
+    App.renderCurrentView();
+  },
+
+  openEditAnnouncementModal: function(annId) {
+    const list = Store.getAnnouncements();
+    const ann = list.find(a => a.id === annId || a._id === annId);
+    if (!ann) return;
+
+    const idEl = document.getElementById('edit-ann-id');
+    const titleEl = document.getElementById('edit-ann-title');
+    const targetEl = document.getElementById('edit-ann-target');
+    const priorityEl = document.getElementById('edit-ann-priority');
+    const authorEl = document.getElementById('edit-ann-author');
+    const dateEl = document.getElementById('edit-ann-date');
+
+    if (idEl) idEl.value = ann.id || ann._id;
+    if (titleEl) titleEl.value = ann.title || '';
+    if (targetEl) targetEl.value = ann.target || 'All Users';
+    if (priorityEl) priorityEl.value = ann.priority || 'Normal';
+    if (authorEl) authorEl.value = ann.author || 'System Administrator';
+    if (dateEl) dateEl.value = ann.date || '';
+
+    this.openModal('modal-edit-announcement');
+  },
+
+  handleEditAnnouncementSubmit: function() {
+    const idEl = document.getElementById('edit-ann-id');
+    const titleEl = document.getElementById('edit-ann-title');
+    const targetEl = document.getElementById('edit-ann-target');
+    const priorityEl = document.getElementById('edit-ann-priority');
+    const authorEl = document.getElementById('edit-ann-author');
+    const dateEl = document.getElementById('edit-ann-date');
+
+    if (!idEl || !titleEl || !titleEl.value.trim()) {
+      alert('Please enter announcement title');
+      return;
+    }
+
+    const annId = idEl.value;
+    Store.updateAnnouncement(annId, {
+      title: titleEl.value.trim(),
+      target: targetEl.value,
+      priority: priorityEl.value,
+      author: authorEl ? authorEl.value.trim() : 'System Administrator',
+      date: dateEl ? dateEl.value.trim() : ''
+    });
+
+    this.closeModal('modal-edit-announcement');
     App.renderCurrentView();
   },
 
@@ -466,6 +754,58 @@ const ModalsComponent = {
     App.renderCurrentView();
   },
 
+  openEditVenueModal: function(eventId) {
+    const approvals = Store.getEventsApprovals();
+    const event = approvals.find(e => e.id === eventId || e._id === eventId);
+    if (!event) return;
+
+    const idEl = document.getElementById('edit-venue-id');
+    const titleEl = document.getElementById('edit-venue-title');
+    const orgEl = document.getElementById('edit-venue-organizer');
+    const venueEl = document.getElementById('edit-venue-name');
+    const dateEl = document.getElementById('edit-venue-date');
+    const statusEl = document.getElementById('edit-venue-status');
+    const detailsEl = document.getElementById('edit-venue-details');
+
+    if (idEl) idEl.value = event.id || event._id;
+    if (titleEl) titleEl.value = event.title || '';
+    if (orgEl) orgEl.value = event.organizer || '';
+    if (venueEl) venueEl.value = event.venue || 'Main Auditorium';
+    if (dateEl) dateEl.value = event.date || '';
+    if (statusEl) statusEl.value = event.status || 'Pending Approval';
+    if (detailsEl) detailsEl.value = event.details || '';
+
+    this.openModal('modal-edit-venue');
+  },
+
+  handleEditVenueSubmit: function() {
+    const idEl = document.getElementById('edit-venue-id');
+    const titleEl = document.getElementById('edit-venue-title');
+    const orgEl = document.getElementById('edit-venue-organizer');
+    const venueEl = document.getElementById('edit-venue-name');
+    const dateEl = document.getElementById('edit-venue-date');
+    const statusEl = document.getElementById('edit-venue-status');
+    const detailsEl = document.getElementById('edit-venue-details');
+
+    if (!idEl || !titleEl || !titleEl.value.trim()) {
+      alert('Please enter event title');
+      return;
+    }
+
+    const eventId = idEl.value;
+    Store.updateEventApproval(eventId, {
+      title: titleEl.value.trim(),
+      organizer: orgEl.value.trim(),
+      venue: venueEl.value,
+      date: dateEl.value.trim(),
+      status: statusEl.value,
+      details: detailsEl ? detailsEl.value.trim() : ''
+    });
+
+    this.closeModal('modal-edit-venue');
+    App.renderCurrentView();
+  },
+
   showEventDetails: function(eventId) {
     const approvals = Store.getEventsApprovals();
     const event = approvals.find(e => e.id === eventId);
@@ -490,9 +830,9 @@ const ModalsComponent = {
     if (window.lucide) lucide.createIcons();
   },
 
-  handleCreateAnonymousPostSubmit: function() {
-    const categoryEl = document.getElementById('new-post-category');
+  handleCreateAnonymousPostSubmit: async function() {
     const textEl = document.getElementById('new-post-text');
+    const categoryEl = document.getElementById('new-post-category');
     const mediaTypeEl = document.getElementById('new-post-media-type');
     const mediaUrlEl = document.getElementById('new-post-media-url');
 
@@ -526,8 +866,8 @@ const ModalsComponent = {
       alert(`[AI Moderation Notice]\nYour post contains link patterns that require review. It will be marked as 'Flagged for Review' for campus safety.`);
     }
 
-    // Add post to Store
-    Store.addCommunityPost({
+    // Add post to Store & Backend
+    await Store.addCommunityPost({
       category,
       text,
       mediaType,

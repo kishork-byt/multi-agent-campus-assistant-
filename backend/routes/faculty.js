@@ -1,6 +1,12 @@
 const express = require("express");
 const router = express.Router();
 const Faculty = require("../models/Faculty");
+const mongoose = require("mongoose");
+
+// Helper to construct query for _id or staffId
+function getFacultyQuery(id) {
+  return mongoose.Types.ObjectId.isValid(id) ? { $or: [{ _id: id }, { staffId: id }] } : { staffId: id };
+}
 
 // GET /api/faculty - List all faculty members
 router.get("/", async (req, res) => {
@@ -15,7 +21,7 @@ router.get("/", async (req, res) => {
 // GET /api/faculty/:id - Get single faculty record
 router.get("/:id", async (req, res) => {
   try {
-    const member = await Faculty.findById(req.params.id);
+    const member = await Faculty.findOne(getFacultyQuery(req.params.id));
     if (!member) return res.status(404).json({ success: false, error: "Faculty record not found" });
     res.json({ success: true, data: member });
   } catch (err) {
@@ -37,7 +43,7 @@ router.post("/", async (req, res) => {
 // PUT /api/faculty/:id - Update faculty record
 router.put("/:id", async (req, res) => {
   try {
-    const member = await Faculty.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    const member = await Faculty.findOneAndUpdate(getFacultyQuery(req.params.id), { $set: req.body }, { new: true, runValidators: true });
     if (!member) return res.status(404).json({ success: false, error: "Faculty record not found" });
     res.json({ success: true, data: member });
   } catch (err) {
@@ -48,7 +54,7 @@ router.put("/:id", async (req, res) => {
 // DELETE /api/faculty/:id - Delete faculty record
 router.delete("/:id", async (req, res) => {
   try {
-    const member = await Faculty.findByIdAndDelete(req.params.id);
+    const member = await Faculty.findOneAndDelete(getFacultyQuery(req.params.id));
     if (!member) return res.status(404).json({ success: false, error: "Faculty record not found" });
     res.json({ success: true, message: "Faculty record deleted successfully" });
   } catch (err) {

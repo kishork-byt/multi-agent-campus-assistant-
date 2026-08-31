@@ -2,9 +2,11 @@ const mongoose = require("mongoose");
 
 const communityCommentSchema = new mongoose.Schema(
   {
-    postId: { type: mongoose.Schema.Types.ObjectId, ref: "CommunityPost", required: true },
+    commentId: { type: String },
+    postId: { type: String, required: true },
     authorRole: { type: String, enum: ["student", "staff", "admin"], default: "student" },
-    text: { type: String, required: true }
+    text: { type: String, required: true },
+    timestamp: { type: String, default: "" }
   },
   { timestamps: true }
 );

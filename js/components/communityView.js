@@ -11,8 +11,8 @@ const CommunityView = {
     const currentUser = Auth.getCurrentUser();
     const userKey = currentUser.id || currentUser.email || 'session_user';
 
-    // Filter out hidden or removed posts for regular view
-    const visiblePosts = posts.filter(p => p.status !== 'hidden' && p.status !== 'removed');
+    // Filter to display approved posts in public community feed
+    const visiblePosts = posts.filter(p => p.status === 'approved' || p.status === 'active');
 
     return `
       <div>
@@ -31,6 +31,16 @@ const CommunityView = {
             </button>
           </div>
         </div>
+
+        ${Store.backendStatus && !Store.backendStatus.connected ? `
+          <div class="card glass-panel" style="background: rgba(239, 68, 68, 0.12); border-color: rgba(239, 68, 68, 0.35); padding: 1rem 1.25rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem;">
+            <i data-lucide="wifi-off" style="color: var(--status-error); flex-shrink: 0; width: 22px; height: 22px;"></i>
+            <div>
+              <strong style="color: var(--status-error); font-size: 0.92rem;">Backend Server Connection Error:</strong>
+              <span style="font-size: 0.85rem; color: var(--text-main); display: block; margin-top: 0.15rem;">Unable to connect to MongoDB API backend at <code>${Store.API_BASE}</code> (${Store.backendStatus.lastError || 'Offline'}).</span>
+            </div>
+          </div>
+        ` : ''}
 
         <!-- Filter & Search Controls Bar -->
         <div class="card" style="margin-bottom: 1.5rem;">
@@ -205,8 +215,8 @@ const CommunityView = {
     });
   },
 
-  toggleSupport: function(postId) {
-    const res = Store.supportCommunityPost(postId);
+  toggleSupport: async function(postId) {
+    const res = await Store.supportCommunityPost(postId);
     if (res) {
       App.renderCurrentView();
     }
@@ -220,19 +230,19 @@ const CommunityView = {
     }
   },
 
-  submitComment: function(postId) {
+  submitComment: async function(postId) {
     const input = document.getElementById(`comment-input-${postId}`);
     if (!input || !input.value.trim()) return;
 
-    Store.addCommunityComment(postId, input.value.trim());
+    await Store.addCommunityComment(postId, input.value.trim());
     input.value = '';
     this.openCommentsMap[postId] = true;
     App.renderCurrentView();
   },
 
-  reportPost: function(postId) {
+  reportPost: async function(postId) {
     if (confirm('Report this post to Campus AI Moderation for review?')) {
-      Store.moderateCommunityPost(postId, 'flag');
+      await Store.moderateCommunityPost(postId, 'flag');
       alert('Post reported. AI Moderation team has been notified.');
       App.renderCurrentView();
     }

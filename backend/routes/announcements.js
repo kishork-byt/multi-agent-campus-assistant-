@@ -1,6 +1,12 @@
 const express = require("express");
 const router = express.Router();
 const Announcement = require("../models/Announcement");
+const mongoose = require("mongoose");
+
+// Helper to construct query for _id or announcementId
+function getAnnouncementQuery(id) {
+  return mongoose.Types.ObjectId.isValid(id) ? { $or: [{ _id: id }, { announcementId: id }] } : { announcementId: id };
+}
 
 // GET /api/announcements - List all announcements
 router.get("/", async (req, res) => {
@@ -15,7 +21,7 @@ router.get("/", async (req, res) => {
 // GET /api/announcements/:id - Get single announcement
 router.get("/:id", async (req, res) => {
   try {
-    const item = await Announcement.findById(req.params.id);
+    const item = await Announcement.findOne(getAnnouncementQuery(req.params.id));
     if (!item) return res.status(404).json({ success: false, error: "Announcement not found" });
     res.json({ success: true, data: item });
   } catch (err) {
@@ -37,7 +43,7 @@ router.post("/", async (req, res) => {
 // PUT /api/announcements/:id - Update announcement
 router.put("/:id", async (req, res) => {
   try {
-    const item = await Announcement.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    const item = await Announcement.findOneAndUpdate(getAnnouncementQuery(req.params.id), { $set: req.body }, { new: true, runValidators: true });
     if (!item) return res.status(404).json({ success: false, error: "Announcement not found" });
     res.json({ success: true, data: item });
   } catch (err) {
@@ -48,7 +54,7 @@ router.put("/:id", async (req, res) => {
 // DELETE /api/announcements/:id - Delete announcement
 router.delete("/:id", async (req, res) => {
   try {
-    const item = await Announcement.findByIdAndDelete(req.params.id);
+    const item = await Announcement.findOneAndDelete(getAnnouncementQuery(req.params.id));
     if (!item) return res.status(404).json({ success: false, error: "Announcement not found" });
     res.json({ success: true, message: "Announcement deleted successfully" });
   } catch (err) {

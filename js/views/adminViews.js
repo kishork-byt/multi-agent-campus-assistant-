@@ -139,6 +139,7 @@ const AdminViews = {
                     <td>
                       <div style="display: flex; gap: 0.25rem;">
                         <button class="btn btn-ghost btn-sm" onclick="alert('Student Record Details:\\nID: ${s.id}\\nName: ${s.name}\\nDept: ${s.dept}\\nCGPA: ${s.cgpa}')">View</button>
+                        <button class="btn btn-ghost btn-sm" style="color: var(--primary-400);" onclick="AdminViews.editStudentPrompt('${s.id}')">Edit</button>
                         <button class="btn btn-ghost btn-sm" style="color: var(--status-error);" onclick="if(confirm('Delete record for ${s.name}?')) { Store.deleteStudent('${s.id}'); App.renderCurrentView(); }">Delete</button>
                       </div>
                     </td>
@@ -150,6 +151,16 @@ const AdminViews = {
         </div>
       </div>
     `;
+  },
+
+  editStudentPrompt: function(studentId) {
+    const student = Store.getStudentsList().find(s => s.id === studentId || s._id === studentId);
+    if (!student) return;
+    const newCGPA = prompt(`Edit CGPA for ${student.name} (${student.id}):`, student.cgpa);
+    if (newCGPA !== null && newCGPA.trim()) {
+      Store.updateStudent(studentId, { cgpa: newCGPA.trim() });
+      App.renderCurrentView();
+    }
   },
 
   searchStudents: function(query) {
@@ -166,7 +177,7 @@ const AdminViews = {
     });
   },
 
-  // 3. Staff Management (STORE PERSISTENT)
+  // 3. Staff Management (STORE PERSISTENT & BACKEND SYNCED)
   renderStaffManagement: function() {
     const list = Store.getStaffList();
     return `
@@ -182,6 +193,24 @@ const AdminViews = {
         </div>
 
         <div class="card">
+          <!-- Search & Filter Controls Bar -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 1rem;">
+            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; flex: 1;">
+              <div class="input-group" style="max-width: 280px; flex: 1;">
+                <i data-lucide="search" class="input-icon"></i>
+                <input type="text" class="input-field" placeholder="Search by name, ID or email..." onkeyup="AdminViews.searchStaff(this.value)">
+              </div>
+              <select class="input-field select-field" style="max-width: 200px;" onchange="AdminViews.filterStaffDept(this.value)">
+                <option value="all">All Departments</option>
+                <option value="Computer Science">Computer Science</option>
+                <option value="Data Science">Data Science</option>
+                <option value="Electrical Eng.">Electrical Eng.</option>
+                <option value="Biotechnology">Biotechnology</option>
+              </select>
+            </div>
+            <span style="font-size: 0.85rem; color: var(--text-muted);">Showing <strong>${list.length}</strong> Registered Faculty Members</span>
+          </div>
+
           <div class="table-container">
             <table class="data-table">
               <thead>
@@ -196,9 +225,9 @@ const AdminViews = {
                   <th>Actions</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody id="admin-staff-table-body">
                 ${list.map(s => `
-                  <tr>
+                  <tr data-dept="${s.dept}">
                     <td><strong>${s.id}</strong></td>
                     <td>${s.name}</td>
                     <td>${s.dept}</td>
@@ -207,7 +236,11 @@ const AdminViews = {
                     <td>${s.courses} Courses</td>
                     <td><span class="badge badge-${s.status === 'Active' ? 'staff' : 'admin'}">${s.status}</span></td>
                     <td>
-                      <button class="btn btn-ghost btn-sm" onclick="alert('Editing permissions for ${s.name}')">Edit Permissions</button>
+                      <div style="display: flex; gap: 0.25rem;">
+                        <button class="btn btn-ghost btn-sm" onclick="alert('Faculty Record Details:\\nID: ${s.id}\\nName: ${s.name}\\nDept: ${s.dept}\\nRole: ${s.role}\\nEmail: ${s.email}\\nCourses: ${s.courses}\\nStatus: ${s.status}')">View</button>
+                        <button class="btn btn-ghost btn-sm" style="color: var(--primary-400);" onclick="ModalsComponent.openEditStaffModal('${s.id}')">Edit</button>
+                        <button class="btn btn-ghost btn-sm" style="color: var(--status-error);" onclick="if(confirm('Are you sure you want to delete faculty record for ${s.name} (${s.id})? This will remove it from MongoDB.')) { Store.deleteStaff('${s.id}'); App.renderCurrentView(); }">Delete</button>
+                      </div>
                     </td>
                   </tr>
                 `).join('')}
@@ -217,6 +250,24 @@ const AdminViews = {
         </div>
       </div>
     `;
+  },
+
+  editStaffPrompt: function(staffId) {
+    ModalsComponent.openEditStaffModal(staffId);
+  },
+
+  searchStaff: function(query) {
+    const q = query.toLowerCase();
+    document.querySelectorAll('#admin-staff-table-body tr').forEach(row => {
+      row.style.display = row.innerText.toLowerCase().includes(q) ? '' : 'none';
+    });
+  },
+
+  filterStaffDept: function(dept) {
+    document.querySelectorAll('#admin-staff-table-body tr').forEach(row => {
+      const d = row.getAttribute('data-dept');
+      row.style.display = (dept === 'all' || (d && d.includes(dept))) ? '' : 'none';
+    });
   },
 
   // 4. Departments Page (STORE PERSISTENT)
@@ -282,8 +333,8 @@ const AdminViews = {
               </div>
               <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">Published on ${a.date} by <strong>${a.author}</strong></p>
               <div style="display: flex; gap: 0.5rem;">
-                <button class="btn btn-ghost btn-sm" onclick="alert('Editing broadcast announcement: ${a.title}')">Edit Notice</button>
-                <button class="btn btn-ghost btn-sm" style="color: var(--status-error);" onclick="if(confirm('Remove announcement?')) { Store.deleteAnnouncement('${a.id}'); App.renderCurrentView(); }">Remove Broadcast</button>
+                <button class="btn btn-ghost btn-sm" onclick="ModalsComponent.openEditAnnouncementModal('${a.id}')">Edit Notice</button>
+                <button class="btn btn-ghost btn-sm" style="color: var(--status-error);" onclick="if(confirm('Are you sure you want to delete announcement &quot;${a.title}&quot;? This will remove it from MongoDB.')) { Store.deleteAnnouncement('${a.id}'); App.renderCurrentView(); }">Remove Broadcast</button>
               </div>
             </div>
           `).join('')}
@@ -330,13 +381,15 @@ const AdminViews = {
                     <td>${e.date}</td>
                     <td><span class="badge badge-${e.status === 'Approved' ? 'staff' : 'admin'}">${e.status}</span></td>
                     <td>
-                      <div style="display: flex; gap: 0.35rem; align-items: center;">
+                      <div style="display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap;">
                         ${e.status !== 'Approved' ? `
-                          <button class="btn btn-primary btn-sm" onclick="Store.approveEvent('${e.id}'); App.renderCurrentView();">Approve Event</button>
+                          <button class="btn btn-primary btn-sm" onclick="Store.approveEvent('${e.id}'); App.renderCurrentView();">Approve</button>
                         ` : `
                           <span class="badge badge-staff">Approved ✓</span>
                         `}
-                        <button class="btn btn-ghost btn-sm" onclick="ModalsComponent.showEventDetails('${e.id}')">View Details</button>
+                        <button class="btn btn-ghost btn-sm" onclick="ModalsComponent.showEventDetails('${e.id}')">View</button>
+                        <button class="btn btn-ghost btn-sm" style="color: var(--primary-400);" onclick="ModalsComponent.openEditVenueModal('${e.id}')">Edit</button>
+                        <button class="btn btn-ghost btn-sm" style="color: var(--status-error);" onclick="if(confirm('Are you sure you want to delete event reservation for ${e.title}? This will remove it from MongoDB.')) { Store.deleteEventApproval('${e.id}'); App.renderCurrentView(); }">Delete</button>
                       </div>
                     </td>
                   </tr>
@@ -445,7 +498,7 @@ const AdminViews = {
   // 10. Anonymous Community AI Moderation Dashboard
   renderCommunityModeration: function() {
     const posts = Store.getCommunityPosts();
-    const flaggedPosts = posts.filter(p => p.status === 'flagged' || p.flagReason || p.linkedPostId);
+    const flaggedPosts = posts.filter(p => p.status === 'pending' || p.status === 'flagged' || p.flagReason || p.linkedPostId);
 
     return `
       <div>
@@ -470,20 +523,20 @@ const AdminViews = {
             <div class="stat-icon" style="background: rgba(239, 68, 68, 0.15); color: #ef4444;"><i data-lucide="alert-triangle"></i></div>
             <div class="stat-info">
               <span class="stat-value">${flaggedPosts.length}</span>
-              <span class="stat-label">Flagged for AI Review</span>
+              <span class="stat-label">Pending / Flagged for Review</span>
             </div>
           </div>
           <div class="stat-card">
             <div class="stat-icon" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;"><i data-lucide="link"></i></div>
             <div class="stat-info">
-              <span class="stat-value">${posts.filter(p => p.linkedPostId).length}</span>
+              <span class="stat-value">${posts.filter(p => p.linkedPostId || (p.duplicateScore && p.duplicateScore > 50)).length}</span>
               <span class="stat-label">Duplicate Issues Linked</span>
             </div>
           </div>
           <div class="stat-card">
             <div class="stat-icon" style="background: rgba(16, 185, 129, 0.15); color: #10b981;"><i data-lucide="check-circle"></i></div>
             <div class="stat-info">
-              <span class="stat-value">${posts.filter(p => p.status === 'active').length}</span>
+              <span class="stat-value">${posts.filter(p => p.status === 'approved' || p.status === 'active').length}</span>
               <span class="stat-label">Approved Active Posts</span>
             </div>
           </div>
@@ -498,7 +551,8 @@ const AdminViews = {
                   <th>Post ID</th>
                   <th>Anonymous Author</th>
                   <th>Category</th>
-                  <th>Post Preview</th>
+                  <th>Post Content Preview</th>
+                  <th>AI Moderation Scores</th>
                   <th>AI Flag Reason</th>
                   <th>Status</th>
                   <th>Moderation Actions</th>
@@ -507,7 +561,7 @@ const AdminViews = {
               <tbody>
                 ${flaggedPosts.length === 0 ? `
                   <tr>
-                    <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                    <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 2rem;">
                       No flagged posts currently requiring moderation review.
                     </td>
                   </tr>
@@ -516,14 +570,21 @@ const AdminViews = {
                     <td><strong>${p.id}</strong></td>
                     <td><span class="badge badge-${p.authorRole === 'staff' ? 'staff' : 'student'}">${p.authorRole === 'staff' ? 'Anonymous Faculty' : 'Anonymous Student'}</span></td>
                     <td>${p.category}</td>
-                    <td style="max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${p.text}</td>
+                    <td style="max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${p.text}</td>
+                    <td>
+                      <div style="font-size: 0.78rem; display: flex; flex-direction: column; gap: 0.15rem;">
+                        <span style="color: ${p.toxicScore > 50 ? 'var(--status-error)' : 'var(--text-muted)'}; font-weight: ${p.toxicScore > 50 ? '700' : 'normal'};">Toxic: ${p.toxicScore || 0}%</span>
+                        <span style="color: ${p.duplicateScore > 50 ? '#f59e0b' : 'var(--text-muted)'}; font-weight: ${p.duplicateScore > 50 ? '700' : 'normal'};">Duplicate: ${p.duplicateScore || 0}%</span>
+                        <span style="color: ${p.fakeScore > 50 ? '#ef4444' : 'var(--text-muted)'}; font-weight: ${p.fakeScore > 50 ? '700' : 'normal'};">Suspicious: ${p.fakeScore || 0}%</span>
+                      </div>
+                    </td>
                     <td><span style="font-size: 0.8rem; color: var(--status-error);">${p.flagReason || 'User Reported'}</span></td>
-                    <td><span class="badge badge-${p.status === 'active' ? 'staff' : 'danger'}">${p.status}</span></td>
+                    <td><span class="badge badge-${(p.status === 'approved' || p.status === 'active') ? 'staff' : 'danger'}">${p.status}</span></td>
                     <td>
                       <div style="display: flex; gap: 0.35rem;">
-                        <button class="btn btn-primary btn-sm" style="font-size: 0.75rem;" onclick="Store.moderateCommunityPost('${p.id}', 'approve'); App.renderCurrentView();">Approve</button>
-                        <button class="btn btn-secondary btn-sm" style="font-size: 0.75rem;" onclick="Store.moderateCommunityPost('${p.id}', 'hide'); App.renderCurrentView();">Hide</button>
-                        <button class="btn btn-ghost btn-sm" style="color: var(--status-error); font-size: 0.75rem;" onclick="if(confirm('Remove post completely?')) { Store.moderateCommunityPost('${p.id}', 'remove'); App.renderCurrentView(); }">Remove</button>
+                        <button class="btn btn-primary btn-sm" style="font-size: 0.75rem;" onclick="Store.moderateCommunityPost('${p.id}', 'approve').then(() => App.renderCurrentView());">Approve</button>
+                        <button class="btn btn-secondary btn-sm" style="font-size: 0.75rem;" onclick="Store.moderateCommunityPost('${p.id}', 'reject').then(() => App.renderCurrentView());">Reject / Hide</button>
+                        <button class="btn btn-ghost btn-sm" style="color: var(--status-error); font-size: 0.75rem;" onclick="if(confirm('Remove post completely? This will delete it from MongoDB.')) { Store.moderateCommunityPost('${p.id}', 'remove').then(() => App.renderCurrentView()); }">Delete</button>
                       </div>
                     </td>
                   </tr>

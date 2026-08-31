@@ -1,8 +1,15 @@
 const express = require("express");
 const router = express.Router();
+const mongoose = require("mongoose");
 const CommunityPost = require("../models/CommunityPost");
 const CommunityComment = require("../models/CommunityComment");
 const SupportIssue = require("../models/SupportIssue");
+const AiModerationService = require("../services/aiModerationService");
+
+// Helper to construct query for _id or postId
+function getPostQuery(id) {
+  return mongoose.Types.ObjectId.isValid(id) ? { $or: [{ _id: id }, { postId: id }] } : { postId: id };
+}
 
 /* -------------------------------------------------------------------------- */
 /* 1. COMMUNITY POSTS CRUD & MODERATION                                       */
@@ -28,7 +35,7 @@ router.get("/posts", async (req, res) => {
 // GET /api/community/posts/:id - Get single post
 router.get("/posts/:id", async (req, res) => {
   try {
-    const post = await CommunityPost.findById(req.params.id);
+    const post = await CommunityPost.findOne(getPostQuery(req.params.id));
     if (!post) return res.status(404).json({ success: false, error: "Community post not found" });
     res.json({ success: true, data: post });
   } catch (err) {
@@ -36,12 +43,22 @@ router.get("/posts/:id", async (req, res) => {
   }
 });
 
-// POST /api/community/posts - Create post
+// POST /api/community/posts - Create post with AI Moderation
 router.post("/posts", async (req, res) => {
   try {
-    const post = new CommunityPost(req.body);
+    const aiResult = await AiModerationService.analyzePost(req.body);
+    const postData = {
+      ...req.body,
+      status: aiResult.status,
+      toxicScore: aiResult.toxicScore,
+      fakeScore: aiResult.fakeScore,
+      duplicateScore: aiResult.duplicateScore,
+      flagReason: aiResult.flagReason,
+      linkedPostId: aiResult.linkedPostId
+    };
+    const post = new CommunityPost(postData);
     await post.save();
-    res.status(201).json({ success: true, data: post });
+    res.status(201).json({ success: true, data: post, aiModeration: aiResult });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
   }
@@ -50,7 +67,7 @@ router.post("/posts", async (req, res) => {
 // PUT /api/community/posts/:id - Moderate or update post
 router.put("/posts/:id", async (req, res) => {
   try {
-    const post = await CommunityPost.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    const post = await CommunityPost.findOneAndUpdate(getPostQuery(req.params.id), { $set: req.body }, { new: true, runValidators: true });
     if (!post) return res.status(404).json({ success: false, error: "Community post not found" });
     res.json({ success: true, data: post });
   } catch (err) {
@@ -61,10 +78,11 @@ router.put("/posts/:id", async (req, res) => {
 // DELETE /api/community/posts/:id - Delete post
 router.delete("/posts/:id", async (req, res) => {
   try {
-    const post = await CommunityPost.findByIdAndDelete(req.params.id);
+    const post = await CommunityPost.findOneAndDelete(getPostQuery(req.params.id));
     if (!post) return res.status(404).json({ success: false, error: "Community post not found" });
-    await CommunityComment.deleteMany({ postId: req.params.id });
-    await SupportIssue.deleteMany({ postId: req.params.id });
+    const targetId = post.postId || post._id.toString();
+    await CommunityComment.deleteMany({ $or: [{ postId: targetId }, { postId: req.params.id }] });
+    await SupportIssue.deleteMany({ $or: [{ postId: targetId }, { postId: req.params.id }] });
     res.json({ success: true, message: "Community post and associated records removed successfully" });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -87,12 +105,18 @@ router.get("/comments", async (req, res) => {
   }
 });
 
-// POST /api/community/comments - Add comment
+// POST /api/community/comments - Add comment with AI Moderation
 router.post("/comments", async (req, res) => {
   try {
-    const comment = new CommunityComment(req.body);
+    const aiAnalysis = AiModerationService.analyzeComment(req.body);
+    const commentData = {
+      ...req.body,
+      isFlagged: aiAnalysis.isFlagged,
+      flagReason: aiAnalysis.flagReason
+    };
+    const comment = new CommunityComment(commentData);
     await comment.save();
-    res.status(201).json({ success: true, data: comment });
+    res.status(201).json({ success: true, data: comment, aiModeration: aiAnalysis });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
   }
@@ -121,10 +145,11 @@ router.post("/support", async (req, res) => {
       return res.status(400).json({ success: false, error: "postId and userId are required" });
     }
 
-    const post = await CommunityPost.findById(postId);
+    const post = await CommunityPost.findOne(getPostQuery(postId));
     if (!post) return res.status(404).json({ success: false, error: "Community post not found" });
 
-    const existing = await SupportIssue.findOne({ postId, userId });
+    const targetPostId = post.postId || post._id.toString();
+    const existing = await SupportIssue.findOne({ postId: { $in: [postId, targetPostId] }, userId });
     let isSupported = false;
 
     if (existing) {
@@ -134,7 +159,7 @@ router.post("/support", async (req, res) => {
       post.supportCount = Math.max(0, post.supportCount - 1);
     } else {
       // Toggle on support
-      const supportDoc = new SupportIssue({ postId, userId, userRole: userRole || 'student' });
+      const supportDoc = new SupportIssue({ postId: targetPostId, userId, userRole: userRole || 'student' });
       await supportDoc.save();
       if (!post.supportedBy) post.supportedBy = [];
       post.supportedBy.push(userId);

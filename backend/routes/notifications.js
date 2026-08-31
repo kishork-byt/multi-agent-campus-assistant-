@@ -36,6 +36,18 @@ router.post("/", async (req, res) => {
   }
 });
 
+// PUT /api/notifications/read-all - Mark all notifications as read for a role
+router.put("/read-all", async (req, res) => {
+  try {
+    const filter = {};
+    if (req.body.role) filter.role = req.body.role;
+    await Notification.updateMany(filter, { $set: { read: true } });
+    res.json({ success: true, message: "All notifications marked as read" });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // PUT /api/notifications/:id - Mark as read / update
 router.put("/:id", async (req, res) => {
   try {

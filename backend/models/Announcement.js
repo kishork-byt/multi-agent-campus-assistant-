@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 
 const announcementSchema = new mongoose.Schema(
   {
+    announcementId: { type: String },
     title: { type: String, required: true },
     target: { type: String, default: "All Users" },
     author: { type: String, default: "System Administrator" },

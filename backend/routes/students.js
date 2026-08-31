@@ -2,6 +2,13 @@ const express = require("express");
 const router = express.Router();
 const Student = require("../models/Student");
 
+const mongoose = require("mongoose");
+
+// Helper to construct query for _id or studentId
+function getStudentQuery(id) {
+  return mongoose.Types.ObjectId.isValid(id) ? { $or: [{ _id: id }, { studentId: id }] } : { studentId: id };
+}
+
 // GET /api/students - List all students
 router.get("/", async (req, res) => {
   try {
@@ -15,7 +22,7 @@ router.get("/", async (req, res) => {
 // GET /api/students/:id - Get single student
 router.get("/:id", async (req, res) => {
   try {
-    const student = await Student.findById(req.params.id);
+    const student = await Student.findOne(getStudentQuery(req.params.id));
     if (!student) return res.status(404).json({ success: false, error: "Student not found" });
     res.json({ success: true, data: student });
   } catch (err) {
@@ -37,7 +44,7 @@ router.post("/", async (req, res) => {
 // PUT /api/students/:id - Update student
 router.put("/:id", async (req, res) => {
   try {
-    const student = await Student.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    const student = await Student.findOneAndUpdate(getStudentQuery(req.params.id), { $set: req.body }, { new: true });
     if (!student) return res.status(404).json({ success: false, error: "Student not found" });
     res.json({ success: true, data: student });
   } catch (err) {
@@ -48,7 +55,7 @@ router.put("/:id", async (req, res) => {
 // DELETE /api/students/:id - Delete student
 router.delete("/:id", async (req, res) => {
   try {
-    const student = await Student.findByIdAndDelete(req.params.id);
+    const student = await Student.findOneAndDelete(getStudentQuery(req.params.id));
     if (!student) return res.status(404).json({ success: false, error: "Student not found" });
     res.json({ success: true, message: "Student record deleted successfully" });
   } catch (err) {

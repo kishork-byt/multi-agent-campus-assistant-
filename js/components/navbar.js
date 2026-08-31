@@ -49,7 +49,13 @@ const NavbarComponent = {
             <div style="position: relative;">
               <button class="btn-icon" id="notification-bell-btn" title="Notifications">
                 <i data-lucide="bell"></i>
-                <span style="position: absolute; top: 6px; right: 6px; width: 8px; height: 8px; background: #ef4444; border-radius: 50%;"></span>
+                ${(() => {
+                  const unreadCount = Store.getUnreadNotificationCount(currentPortal);
+                  if (unreadCount > 0) {
+                    return `<span class="notification-badge" style="position: absolute; top: 2px; right: 2px; background: #ef4444; color: #ffffff; border-radius: 50%; font-size: 0.65rem; font-weight: 800; min-width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; padding: 0 3px;">${unreadCount}</span>`;
+                  }
+                  return '';
+                })()}
               </button>
             </div>
 
