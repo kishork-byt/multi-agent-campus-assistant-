@@ -5,6 +5,7 @@ const CommunityPost = require("../models/CommunityPost");
 const CommunityComment = require("../models/CommunityComment");
 const SupportIssue = require("../models/SupportIssue");
 const AiModerationService = require("../services/aiModerationService");
+const { isDbConnected, inMemoryCommunityPosts, inMemoryCommunityComments, inMemorySupportIssues } = require("../services/inMemoryStore");
 
 // Helper to construct query for _id or postId
 function getPostQuery(id) {
@@ -18,15 +19,26 @@ function getPostQuery(id) {
 // GET /api/community/posts - List posts
 router.get("/posts", async (req, res) => {
   try {
-    const filter = {};
-    if (req.query.category && req.query.category !== 'all') {
-      filter.category = new RegExp(`^${req.query.category}$`, 'i');
+    if (isDbConnected()) {
+      const filter = {};
+      if (req.query.category && req.query.category !== 'all') {
+        filter.category = new RegExp(`^${req.query.category}$`, 'i');
+      }
+      if (req.query.status) {
+        filter.status = req.query.status;
+      }
+      const posts = await CommunityPost.find(filter).sort({ createdAt: -1 });
+      return res.json({ success: true, count: posts.length, data: posts });
+    } else {
+      let posts = [...inMemoryCommunityPosts];
+      if (req.query.category && req.query.category !== 'all') {
+        posts = posts.filter(p => (p.category || "").toLowerCase() === req.query.category.toLowerCase());
+      }
+      if (req.query.status) {
+        posts = posts.filter(p => p.status === req.query.status);
+      }
+      return res.json({ success: true, count: posts.length, data: posts });
     }
-    if (req.query.status) {
-      filter.status = req.query.status;
-    }
-    const posts = await CommunityPost.find(filter).sort({ createdAt: -1 });
-    res.json({ success: true, count: posts.length, data: posts });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -35,9 +47,16 @@ router.get("/posts", async (req, res) => {
 // GET /api/community/posts/:id - Get single post
 router.get("/posts/:id", async (req, res) => {
   try {
-    const post = await CommunityPost.findOne(getPostQuery(req.params.id));
-    if (!post) return res.status(404).json({ success: false, error: "Community post not found" });
-    res.json({ success: true, data: post });
+    const idParam = req.params.id;
+    if (isDbConnected()) {
+      const post = await CommunityPost.findOne(getPostQuery(idParam));
+      if (!post) return res.status(404).json({ success: false, error: "Community post not found" });
+      return res.json({ success: true, data: post });
+    } else {
+      const post = inMemoryCommunityPosts.find(p => p._id === idParam || p.postId === idParam);
+      if (!post) return res.status(404).json({ success: false, error: "Community post not found" });
+      return res.json({ success: true, data: post });
+    }
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -56,8 +75,33 @@ router.post("/posts", async (req, res) => {
       flagReason: aiResult.flagReason,
       linkedPostId: aiResult.linkedPostId
     };
-    const post = new CommunityPost(postData);
-    await post.save();
+
+    let post;
+    if (isDbConnected()) {
+      post = new CommunityPost(postData);
+      await post.save();
+    } else {
+      post = {
+        _id: "post_" + Date.now(),
+        postId: postData.postId || "post_" + Date.now(),
+        authorRole: postData.authorRole || "student",
+        category: postData.category || "General",
+        text: postData.text || "",
+        mediaType: postData.mediaType || "none",
+        mediaUrl: postData.mediaUrl || "",
+        timestamp: postData.timestamp || "Just now",
+        supportCount: postData.supportCount || 0,
+        supportedBy: postData.supportedBy || [],
+        status: postData.status,
+        toxicScore: postData.toxicScore,
+        fakeScore: postData.fakeScore,
+        duplicateScore: postData.duplicateScore,
+        flagReason: postData.flagReason,
+        linkedPostId: postData.linkedPostId,
+        createdAt: new Date().toISOString()
+      };
+      inMemoryCommunityPosts.unshift(post);
+    }
     res.status(201).json({ success: true, data: post, aiModeration: aiResult });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
@@ -67,9 +111,17 @@ router.post("/posts", async (req, res) => {
 // PUT /api/community/posts/:id - Moderate or update post
 router.put("/posts/:id", async (req, res) => {
   try {
-    const post = await CommunityPost.findOneAndUpdate(getPostQuery(req.params.id), { $set: req.body }, { new: true, runValidators: true });
-    if (!post) return res.status(404).json({ success: false, error: "Community post not found" });
-    res.json({ success: true, data: post });
+    const idParam = req.params.id;
+    if (isDbConnected()) {
+      const post = await CommunityPost.findOneAndUpdate(getPostQuery(idParam), { $set: req.body }, { new: true, runValidators: true });
+      if (!post) return res.status(404).json({ success: false, error: "Community post not found" });
+      return res.json({ success: true, data: post });
+    } else {
+      const post = inMemoryCommunityPosts.find(p => p._id === idParam || p.postId === idParam);
+      if (!post) return res.status(404).json({ success: false, error: "Community post not found" });
+      Object.assign(post, req.body);
+      return res.json({ success: true, data: post });
+    }
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
   }
@@ -78,12 +130,31 @@ router.put("/posts/:id", async (req, res) => {
 // DELETE /api/community/posts/:id - Delete post
 router.delete("/posts/:id", async (req, res) => {
   try {
-    const post = await CommunityPost.findOneAndDelete(getPostQuery(req.params.id));
-    if (!post) return res.status(404).json({ success: false, error: "Community post not found" });
-    const targetId = post.postId || post._id.toString();
-    await CommunityComment.deleteMany({ $or: [{ postId: targetId }, { postId: req.params.id }] });
-    await SupportIssue.deleteMany({ $or: [{ postId: targetId }, { postId: req.params.id }] });
-    res.json({ success: true, message: "Community post and associated records removed successfully" });
+    const idParam = req.params.id;
+    if (isDbConnected()) {
+      const post = await CommunityPost.findOneAndDelete(getPostQuery(idParam));
+      if (!post) return res.status(404).json({ success: false, error: "Community post not found" });
+      const targetId = post.postId || post._id.toString();
+      await CommunityComment.deleteMany({ $or: [{ postId: targetId }, { postId: idParam }] });
+      await SupportIssue.deleteMany({ $or: [{ postId: targetId }, { postId: idParam }] });
+      return res.json({ success: true, message: "Community post and associated records removed successfully" });
+    } else {
+      const idx = inMemoryCommunityPosts.findIndex(p => p._id === idParam || p.postId === idParam);
+      if (idx === -1) return res.status(404).json({ success: false, error: "Community post not found" });
+      const removed = inMemoryCommunityPosts.splice(idx, 1)[0];
+      const targetId = removed.postId || removed._id;
+      for (let i = inMemoryCommunityComments.length - 1; i >= 0; i--) {
+        if (inMemoryCommunityComments[i].postId === targetId || inMemoryCommunityComments[i].postId === idParam) {
+          inMemoryCommunityComments.splice(i, 1);
+        }
+      }
+      for (let i = inMemorySupportIssues.length - 1; i >= 0; i--) {
+        if (inMemorySupportIssues[i].postId === targetId || inMemorySupportIssues[i].postId === idParam) {
+          inMemorySupportIssues.splice(i, 1);
+        }
+      }
+      return res.json({ success: true, message: "Community post and associated records removed successfully" });
+    }
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -96,10 +167,18 @@ router.delete("/posts/:id", async (req, res) => {
 // GET /api/community/comments - Get comments for a post (?postId=...)
 router.get("/comments", async (req, res) => {
   try {
-    const filter = {};
-    if (req.query.postId) filter.postId = req.query.postId;
-    const comments = await CommunityComment.find(filter).sort({ createdAt: 1 });
-    res.json({ success: true, count: comments.length, data: comments });
+    if (isDbConnected()) {
+      const filter = {};
+      if (req.query.postId) filter.postId = req.query.postId;
+      const comments = await CommunityComment.find(filter).sort({ createdAt: 1 });
+      return res.json({ success: true, count: comments.length, data: comments });
+    } else {
+      let comments = inMemoryCommunityComments;
+      if (req.query.postId) {
+        comments = inMemoryCommunityComments.filter(c => c.postId === req.query.postId);
+      }
+      return res.json({ success: true, count: comments.length, data: comments });
+    }
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -114,8 +193,24 @@ router.post("/comments", async (req, res) => {
       isFlagged: aiAnalysis.isFlagged,
       flagReason: aiAnalysis.flagReason
     };
-    const comment = new CommunityComment(commentData);
-    await comment.save();
+
+    let comment;
+    if (isDbConnected()) {
+      comment = new CommunityComment(commentData);
+      await comment.save();
+    } else {
+      comment = {
+        _id: "comment_" + Date.now(),
+        postId: commentData.postId,
+        authorRole: commentData.authorRole || "student",
+        text: commentData.text || "",
+        timestamp: commentData.timestamp || "Just now",
+        isFlagged: commentData.isFlagged,
+        flagReason: commentData.flagReason,
+        createdAt: new Date().toISOString()
+      };
+      inMemoryCommunityComments.push(comment);
+    }
     res.status(201).json({ success: true, data: comment, aiModeration: aiAnalysis });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
@@ -125,9 +220,17 @@ router.post("/comments", async (req, res) => {
 // DELETE /api/community/comments/:id - Delete comment
 router.delete("/comments/:id", async (req, res) => {
   try {
-    const comment = await CommunityComment.findByIdAndDelete(req.params.id);
-    if (!comment) return res.status(404).json({ success: false, error: "Comment not found" });
-    res.json({ success: true, message: "Comment deleted successfully" });
+    const idParam = req.params.id;
+    if (isDbConnected()) {
+      const comment = await CommunityComment.findByIdAndDelete(idParam);
+      if (!comment) return res.status(404).json({ success: false, error: "Comment not found" });
+      return res.json({ success: true, message: "Comment deleted successfully" });
+    } else {
+      const idx = inMemoryCommunityComments.findIndex(c => c._id === idParam);
+      if (idx === -1) return res.status(404).json({ success: false, error: "Comment not found" });
+      inMemoryCommunityComments.splice(idx, 1);
+      return res.json({ success: true, message: "Comment deleted successfully" });
+    }
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -145,30 +248,51 @@ router.post("/support", async (req, res) => {
       return res.status(400).json({ success: false, error: "postId and userId are required" });
     }
 
-    const post = await CommunityPost.findOne(getPostQuery(postId));
-    if (!post) return res.status(404).json({ success: false, error: "Community post not found" });
+    if (isDbConnected()) {
+      const post = await CommunityPost.findOne(getPostQuery(postId));
+      if (!post) return res.status(404).json({ success: false, error: "Community post not found" });
 
-    const targetPostId = post.postId || post._id.toString();
-    const existing = await SupportIssue.findOne({ postId: { $in: [postId, targetPostId] }, userId });
-    let isSupported = false;
+      const targetPostId = post.postId || post._id.toString();
+      const existing = await SupportIssue.findOne({ postId: { $in: [postId, targetPostId] }, userId });
+      let isSupported = false;
 
-    if (existing) {
-      // Toggle off support
-      await SupportIssue.findByIdAndDelete(existing._id);
-      post.supportedBy = (post.supportedBy || []).filter(u => u !== userId);
-      post.supportCount = Math.max(0, post.supportCount - 1);
+      if (existing) {
+        await SupportIssue.findByIdAndDelete(existing._id);
+        post.supportedBy = (post.supportedBy || []).filter(u => u !== userId);
+        post.supportCount = Math.max(0, post.supportCount - 1);
+      } else {
+        const supportDoc = new SupportIssue({ postId: targetPostId, userId, userRole: userRole || 'student' });
+        await supportDoc.save();
+        if (!post.supportedBy) post.supportedBy = [];
+        post.supportedBy.push(userId);
+        post.supportCount = (post.supportCount || 0) + 1;
+        isSupported = true;
+      }
+
+      await post.save();
+      return res.json({ success: true, isSupported, supportCount: post.supportCount, data: post });
     } else {
-      // Toggle on support
-      const supportDoc = new SupportIssue({ postId: targetPostId, userId, userRole: userRole || 'student' });
-      await supportDoc.save();
-      if (!post.supportedBy) post.supportedBy = [];
-      post.supportedBy.push(userId);
-      post.supportCount = (post.supportCount || 0) + 1;
-      isSupported = true;
-    }
+      const post = inMemoryCommunityPosts.find(p => p._id === postId || p.postId === postId);
+      if (!post) return res.status(404).json({ success: false, error: "Community post not found" });
 
-    await post.save();
-    res.json({ success: true, isSupported, supportCount: post.supportCount, data: post });
+      const targetPostId = post.postId || post._id;
+      const existingIdx = inMemorySupportIssues.findIndex(s => (s.postId === postId || s.postId === targetPostId) && s.userId === userId);
+      let isSupported = false;
+
+      if (existingIdx !== -1) {
+        inMemorySupportIssues.splice(existingIdx, 1);
+        post.supportedBy = (post.supportedBy || []).filter(u => u !== userId);
+        post.supportCount = Math.max(0, (post.supportCount || 0) - 1);
+      } else {
+        inMemorySupportIssues.push({ _id: "sup_" + Date.now(), postId: targetPostId, userId, userRole: userRole || 'student' });
+        if (!post.supportedBy) post.supportedBy = [];
+        post.supportedBy.push(userId);
+        post.supportCount = (post.supportCount || 0) + 1;
+        isSupported = true;
+      }
+
+      return res.json({ success: true, isSupported, supportCount: post.supportCount, data: post });
+    }
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -177,8 +301,12 @@ router.post("/support", async (req, res) => {
 // GET /api/community/support - List all support issue logs
 router.get("/support", async (req, res) => {
   try {
-    const logs = await SupportIssue.find().sort({ createdAt: -1 });
-    res.json({ success: true, count: logs.length, data: logs });
+    if (isDbConnected()) {
+      const logs = await SupportIssue.find().sort({ createdAt: -1 });
+      return res.json({ success: true, count: logs.length, data: logs });
+    } else {
+      return res.json({ success: true, count: inMemorySupportIssues.length, data: inMemorySupportIssues });
+    }
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }

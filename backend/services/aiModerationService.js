@@ -34,9 +34,15 @@ const AiModerationService = {
       if (words.length < 3) return { isDuplicate: false, score: 0, matchedPostId: null, reason: null };
 
       // Query active/approved posts in the same category or all categories
-      const existingPosts = await CommunityPost.find({
-        status: { $in: ['active', 'approved', 'pending', 'flagged'] }
-      }).limit(50);
+      const { isDbConnected, inMemoryCommunityPosts } = require("./inMemoryStore");
+      let existingPosts = [];
+      if (isDbConnected()) {
+        existingPosts = await CommunityPost.find({
+          status: { $in: ['active', 'approved', 'pending', 'flagged'] }
+        }).limit(50);
+      } else {
+        existingPosts = inMemoryCommunityPosts.filter(p => ['active', 'approved', 'pending', 'flagged'].includes(p.status));
+      }
 
       let highestSimilarity = 0;
       let matchedPost = null;

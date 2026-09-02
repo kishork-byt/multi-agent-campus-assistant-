@@ -1,15 +1,15 @@
-const express = require("express");
-const cors = require("cors");
-const mongoose = require("mongoose");
 const dns = require("dns");
-const path = require("path");
-require("dotenv").config({ path: path.join(__dirname, ".env") });
-
 try {
   dns.setServers(["8.8.8.8", "1.1.1.1"]);
 } catch (e) {
   // Fallback to system DNS if setServers fails
 }
+
+const express = require("express");
+const cors = require("cors");
+const mongoose = require("mongoose");
+const path = require("path");
+require("dotenv").config({ path: path.join(__dirname, ".env") });
 
 const app = express();
 
@@ -23,8 +23,9 @@ let dbStatus = {
 };
 
 if (uri) {
-  mongoose.connect(uri)
+  mongoose.connect(uri, { serverSelectionTimeoutMS: 3000 })
     .then(() => {
+      console.log("Successfully connected to MongoDB Atlas via Mongoose!");
       console.log("Successfully connected to MongoDB Atlas via Mongoose!");
       dbStatus = {
         connected: true,
