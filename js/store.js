@@ -746,6 +746,26 @@ const Store = {
     }
   },
 
+  getNotifications: function(role) {
+    if (!this.data.notifications) return [];
+    if (!role || role === 'all') return this.data.notifications;
+    const normRole = role === 'staff' ? 'staff' : role === 'admin' ? 'admin' : 'student';
+    return this.data.notifications.filter(n => n.role === normRole || n.role === 'all');
+  },
+
+  getStudentNotifications: function() {
+    return this.getNotifications('student');
+  },
+
+  getStaffNotifications: function() {
+    return this.getNotifications('staff');
+  },
+
+  getUnreadNotificationCount: function(role) {
+    const list = this.getNotifications(role);
+    return list.filter(n => !n.read).length;
+  },
+
   addNotification: async function(notifData) {
     if (!this.data.notifications) this.data.notifications = [];
     const notifId = "notif_" + Date.now();
@@ -823,6 +843,24 @@ const Store = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ role: normRole })
     }).catch(() => {});
+  },
+
+  dismissNotification: async function(role, notifId) {
+    if (!this.data.notifications) return false;
+    const idx = this.data.notifications.findIndex(n => n.id === notifId || n._id === notifId);
+    if (idx !== -1) {
+      const removed = this.data.notifications.splice(idx, 1)[0];
+      this.save();
+
+      const targetId = removed._id || removed.id;
+      if (targetId) {
+        await fetch(`${this.API_BASE}/notifications/${targetId}`, {
+          method: 'DELETE'
+        }).catch(() => {});
+      }
+      return true;
+    }
+    return false;
   },
 
   // 2. Students CRUD
@@ -1067,7 +1105,7 @@ const Store = {
   },
 
   // 5. Announcements CRUD
-  addAnnouncement: function(annData) {
+  addAnnouncement: async function(annData) {
     const annId = annData.announcementId || "a" + Date.now();
     const newAnn = {
       id: annId,
@@ -1083,26 +1121,61 @@ const Store = {
     this.addAuditLog(`Published Broadcast Announcement: ${newAnn.title}`);
     this.save();
 
+    // Create Notification records based on Target Audience
+    const targetLower = newAnn.target.toLowerCase();
+    const notifTitle = newAnn.title;
+    const notifDesc = `[${newAnn.priority} Priority] Broadcast Announcement from ${newAnn.author}`;
+    const notifTime = newAnn.date;
+
+    const targetsStudent = targetLower.includes('all') || targetLower.includes('student');
+    const targetsStaff = targetLower.includes('all') || targetLower.includes('staff') || targetLower.includes('faculty');
+
+    if (targetsStudent) {
+      await this.addNotification({
+        role: 'student',
+        type: 'Academic',
+        title: notifTitle,
+        desc: notifDesc,
+        time: notifTime,
+        relatedId: newAnn.id
+      });
+    }
+
+    if (targetsStaff) {
+      await this.addNotification({
+        role: 'staff',
+        type: 'Academic',
+        title: notifTitle,
+        desc: notifDesc,
+        time: notifTime,
+        relatedId: newAnn.id
+      });
+    }
+
     // Async Backend API Sync
-    fetch(`${this.API_BASE}/announcements`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        announcementId: newAnn.id,
-        title: newAnn.title,
-        target: newAnn.target,
-        author: newAnn.author,
-        priority: newAnn.priority,
-        date: newAnn.date
-      })
-    }).then(res => res.json()).then(data => {
-      if (data.success && data.data) {
-        newAnn._id = data.data._id;
-        this.save();
+    try {
+      const res = await fetch(`${this.API_BASE}/announcements`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          announcementId: newAnn.id,
+          title: newAnn.title,
+          target: newAnn.target,
+          author: newAnn.author,
+          priority: newAnn.priority,
+          date: newAnn.date
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.data) {
+          newAnn._id = data.data._id;
+          this.save();
+        }
       }
-    }).catch(err => {
+    } catch (err) {
       console.warn('Backend offline. Saved announcement locally to LocalStorage.', err);
-    });
+    }
 
     return newAnn;
   },

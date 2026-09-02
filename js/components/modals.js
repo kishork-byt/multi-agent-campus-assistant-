@@ -633,7 +633,7 @@ const ModalsComponent = {
     App.renderCurrentView();
   },
 
-  handleAnnouncementSubmit: function() {
+  handleAnnouncementSubmit: async function() {
     const titleEl = document.getElementById('new-ann-title');
     const targetEl = document.getElementById('new-ann-target');
     const priorityEl = document.getElementById('new-ann-priority');
@@ -643,7 +643,7 @@ const ModalsComponent = {
       return;
     }
 
-    const newAnn = Store.addAnnouncement({
+    await Store.addAnnouncement({
       title: titleEl.value.trim(),
       target: targetEl.value,
       priority: priorityEl.value
