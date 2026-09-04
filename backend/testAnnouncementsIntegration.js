@@ -31,6 +31,7 @@ async function verifyAnnouncementsIntegration() {
   const testAnn = {
     announcementId: "a-integ-" + Date.now().toString().slice(-4),
     title: "Initial Test Announcement Title",
+    message: "Initial test announcement detail text for integration testing.",
     target: "All Students & Staff",
     author: "Test Academic Registrar",
     priority: "Normal",
@@ -56,6 +57,7 @@ async function verifyAnnouncementsIntegration() {
   // 4. EDIT ALL FIELDS (PUT /api/announcements/:id)
   const updatedData = {
     title: "Updated Urgent Broadcast Announcement",
+    message: "Updated urgent broadcast announcement message detail text.",
     target: "All Users",
     author: "Vice Chancellor Office",
     priority: "High",

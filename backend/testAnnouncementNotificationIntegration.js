@@ -32,6 +32,7 @@ async function runAnnouncementNotificationTest() {
   const allTargetAnn = {
     announcementId: "a-test-all-" + Date.now().toString().slice(-4),
     title: "Campus AI Hackathon 2026 Registration Open",
+    message: "Registration for the 2026 Campus AI Hackathon is now open to all students and faculty.",
     target: "All Students & Staff",
     author: "Deans Office",
     priority: "Urgent",
@@ -133,6 +134,7 @@ async function runAnnouncementNotificationTest() {
   const studentOnlyAnn = {
     announcementId: "a-test-stu-" + Date.now().toString().slice(-4),
     title: "Student Library Late Return Fee Waiver",
+    message: "All library late return fees for undergraduate students are waived for the current semester.",
     target: "Students Only",
     author: "Library Director",
     priority: "Normal",
@@ -179,6 +181,7 @@ async function runAnnouncementNotificationTest() {
   const staffOnlyAnn = {
     announcementId: "a-test-stf-" + Date.now().toString().slice(-4),
     title: "Faculty Senate Quarter Meeting Agenda",
+    message: "The agenda for the upcoming quarterly Faculty Senate meeting is now available.",
     target: "Staff Only",
     author: "Academic Council",
     priority: "Urgent",

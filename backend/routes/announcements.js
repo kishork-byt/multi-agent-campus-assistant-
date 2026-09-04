@@ -53,6 +53,7 @@ router.post("/", async (req, res) => {
         _id: "ann_" + Date.now(),
         announcementId: req.body.announcementId || "ann_" + Date.now(),
         title: req.body.title,
+        message: req.body.message || "",
         target: req.body.target || "All Users",
         author: req.body.author || "System Administrator",
         priority: req.body.priority || "Normal",

@@ -13,7 +13,8 @@ const inMemorySupportIssues = [];
 async function createNotificationForAnnouncement(announcement) {
   const targetLower = (announcement.target || "").toLowerCase();
   const notifTitle = announcement.title;
-  const notifDesc = `[${announcement.priority || "Normal"} Priority] Broadcast Announcement from ${announcement.author || "System Administrator"}`;
+  const msgSnippet = announcement.message ? `: ${announcement.message}` : '';
+  const notifDesc = `[${announcement.priority || "Normal"} Priority] Broadcast Announcement from ${announcement.author || "System Administrator"}${msgSnippet}`;
   const notifTime = announcement.date || new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
   const relatedId = announcement.announcementId || (announcement._id ? announcement._id.toString() : null);
 

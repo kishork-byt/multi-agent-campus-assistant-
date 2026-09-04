@@ -44,8 +44,19 @@ const Store = {
   getStudentStats: function() { return this.data.student.stats; },
   getStudentTodaySchedule: function() { return this.data.student.todaySchedule; },
   getStudentEvents: function() { return this.data.student.upcomingEvents; },
+  getStudentTimetable: function() { return this.data.student.timetable || []; },
+  getStudentCourses: function() { return this.data.student.courses || []; },
+  getLibraryResources: function() { return this.data.student.libraryResources || []; },
   getStudentNotifications: function() { return this.getNotifications('student'); },
   getStaffNotifications: function() { return this.getNotifications('staff'); },
+  getStaffTasks: function() { return this.data.staff.tasks || []; },
+  getStaffClasses: function() { return this.data.staff.classes || []; },
+  getAIChatHistory: function(role) {
+    if (!this.data.aiChatHistory) {
+      this.data.aiChatHistory = { student: [], staff: [], admin: [] };
+    }
+    return this.data.aiChatHistory[role] || [];
+  },
 
   getNotifications: function(role) {
     if (!this.data.notifications) {
@@ -1110,6 +1121,7 @@ const Store = {
     const newAnn = {
       id: annId,
       title: annData.title,
+      message: annData.message || "",
       target: annData.target || "All Users",
       date: annData.date || new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
       author: annData.author || "System Administrator",
@@ -1124,7 +1136,8 @@ const Store = {
     // Create Notification records based on Target Audience
     const targetLower = newAnn.target.toLowerCase();
     const notifTitle = newAnn.title;
-    const notifDesc = `[${newAnn.priority} Priority] Broadcast Announcement from ${newAnn.author}`;
+    const msgSnippet = newAnn.message ? `: ${newAnn.message}` : '';
+    const notifDesc = `[${newAnn.priority} Priority] Broadcast Announcement from ${newAnn.author}${msgSnippet}`;
     const notifTime = newAnn.date;
 
     const targetsStudent = targetLower.includes('all') || targetLower.includes('student');
@@ -1160,6 +1173,7 @@ const Store = {
         body: JSON.stringify({
           announcementId: newAnn.id,
           title: newAnn.title,
+          message: newAnn.message,
           target: newAnn.target,
           author: newAnn.author,
           priority: newAnn.priority,
@@ -1185,6 +1199,7 @@ const Store = {
     if (!item) return false;
 
     if (updateData.title) item.title = updateData.title;
+    if (updateData.message !== undefined) item.message = updateData.message;
     if (updateData.target) item.target = updateData.target;
     if (updateData.priority) item.priority = updateData.priority;
     if (updateData.author) item.author = updateData.author;
@@ -1200,6 +1215,7 @@ const Store = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         title: item.title,
+        message: item.message,
         target: item.target,
         priority: item.priority,
         author: item.author,

@@ -190,6 +190,10 @@ const ModalsComponent = {
                 <label class="form-label">Announcement Title</label>
                 <input type="text" id="new-ann-title" class="input-field" placeholder="e.g. Campus Holiday Notice" required>
               </div>
+              <div class="form-group">
+                <label class="form-label">Announcement Message</label>
+                <textarea id="new-ann-message" class="input-field" rows="3" placeholder="Enter announcement details..." required style="resize: vertical; min-height: 80px;"></textarea>
+              </div>
               <div class="grid-cols-2">
                 <div class="form-group">
                   <label class="form-label">Target Audience</label>
@@ -236,6 +240,10 @@ const ModalsComponent = {
               <div class="form-group">
                 <label class="form-label">Announcement Title</label>
                 <input type="text" id="edit-ann-title" class="input-field" placeholder="e.g. Campus Holiday Notice" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Announcement Message</label>
+                <textarea id="edit-ann-message" class="input-field" rows="3" placeholder="Enter announcement details..." required style="resize: vertical; min-height: 80px;"></textarea>
               </div>
               <div class="grid-cols-2">
                 <div class="form-group">
@@ -635,6 +643,7 @@ const ModalsComponent = {
 
   handleAnnouncementSubmit: async function() {
     const titleEl = document.getElementById('new-ann-title');
+    const msgEl = document.getElementById('new-ann-message');
     const targetEl = document.getElementById('new-ann-target');
     const priorityEl = document.getElementById('new-ann-priority');
 
@@ -642,14 +651,20 @@ const ModalsComponent = {
       alert('Please enter announcement title');
       return;
     }
+    if (!msgEl || !msgEl.value.trim()) {
+      alert('Please enter announcement message');
+      return;
+    }
 
     await Store.addAnnouncement({
       title: titleEl.value.trim(),
+      message: msgEl.value.trim(),
       target: targetEl.value,
       priority: priorityEl.value
     });
 
     titleEl.value = '';
+    msgEl.value = '';
 
     this.closeModal('modal-add-announcement');
     App.renderCurrentView();
@@ -662,6 +677,7 @@ const ModalsComponent = {
 
     const idEl = document.getElementById('edit-ann-id');
     const titleEl = document.getElementById('edit-ann-title');
+    const msgEl = document.getElementById('edit-ann-message');
     const targetEl = document.getElementById('edit-ann-target');
     const priorityEl = document.getElementById('edit-ann-priority');
     const authorEl = document.getElementById('edit-ann-author');
@@ -669,6 +685,7 @@ const ModalsComponent = {
 
     if (idEl) idEl.value = ann.id || ann._id;
     if (titleEl) titleEl.value = ann.title || '';
+    if (msgEl) msgEl.value = ann.message || '';
     if (targetEl) targetEl.value = ann.target || 'All Users';
     if (priorityEl) priorityEl.value = ann.priority || 'Normal';
     if (authorEl) authorEl.value = ann.author || 'System Administrator';
@@ -680,6 +697,7 @@ const ModalsComponent = {
   handleEditAnnouncementSubmit: function() {
     const idEl = document.getElementById('edit-ann-id');
     const titleEl = document.getElementById('edit-ann-title');
+    const msgEl = document.getElementById('edit-ann-message');
     const targetEl = document.getElementById('edit-ann-target');
     const priorityEl = document.getElementById('edit-ann-priority');
     const authorEl = document.getElementById('edit-ann-author');
@@ -689,10 +707,15 @@ const ModalsComponent = {
       alert('Please enter announcement title');
       return;
     }
+    if (!msgEl || !msgEl.value.trim()) {
+      alert('Please enter announcement message');
+      return;
+    }
 
     const annId = idEl.value;
     Store.updateAnnouncement(annId, {
       title: titleEl.value.trim(),
+      message: msgEl.value.trim(),
       target: targetEl.value,
       priority: priorityEl.value,
       author: authorEl ? authorEl.value.trim() : 'System Administrator',

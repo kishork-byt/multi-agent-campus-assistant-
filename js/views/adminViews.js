@@ -331,6 +331,7 @@ const AdminViews = {
                 </div>
                 <span class="badge badge-primary">${a.target}</span>
               </div>
+              ${a.message ? `<p style="font-size: 0.9rem; margin-bottom: 0.75rem; color: var(--text-color, #e2e8f0); line-height: 1.5;">${a.message}</p>` : ''}
               <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">Published on ${a.date} by <strong>${a.author}</strong></p>
               <div style="display: flex; gap: 0.5rem;">
                 <button class="btn btn-ghost btn-sm" onclick="ModalsComponent.openEditAnnouncementModal('${a.id}')">Edit Notice</button>

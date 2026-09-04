@@ -26,18 +26,31 @@ if (uri) {
   mongoose.connect(uri, { serverSelectionTimeoutMS: 3000 })
     .then(() => {
       console.log("Successfully connected to MongoDB Atlas via Mongoose!");
-      console.log("Successfully connected to MongoDB Atlas via Mongoose!");
       dbStatus = {
         connected: true,
         message: "Successfully connected to MongoDB Atlas"
       };
     })
-    .catch((err) => {
+    .catch(async (err) => {
       console.error("MongoDB Atlas connection failed:", err.message);
-      dbStatus = {
-        connected: false,
-        message: err.message
-      };
+      try {
+        console.log("Initializing in-memory MongoDB database fallback...");
+        const { MongoMemoryServer } = require("mongodb-memory-server");
+        const mongod = await MongoMemoryServer.create();
+        const memUri = mongod.getUri();
+        await mongoose.connect(memUri);
+        console.log("Successfully connected to in-memory MongoDB database via Mongoose!");
+        dbStatus = {
+          connected: true,
+          message: "Successfully connected to in-memory MongoDB database"
+        };
+      } catch (memErr) {
+        console.error("In-memory MongoDB fallback failed:", memErr.message);
+        dbStatus = {
+          connected: false,
+          message: err.message
+        };
+      }
     });
 } else {
   dbStatus = {
