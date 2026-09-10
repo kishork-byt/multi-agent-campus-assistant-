@@ -58,6 +58,46 @@ const Store = {
     return this.data.aiChatHistory[role] || [];
   },
 
+  addAIChatMessage: function(role, sender, text) {
+    if (!this.data.aiChatHistory) {
+      this.data.aiChatHistory = { student: [], staff: [], admin: [] };
+    }
+    if (!this.data.aiChatHistory[role]) {
+      this.data.aiChatHistory[role] = [];
+    }
+    this.data.aiChatHistory[role].push({ sender, text, timestamp: new Date().toISOString() });
+    this.save();
+  },
+
+  clearAIChatHistory: function(role) {
+    if (!this.data.aiChatHistory) {
+      this.data.aiChatHistory = { student: [], staff: [], admin: [] };
+    }
+    this.data.aiChatHistory[role] = [];
+    this.save();
+  },
+
+  sendAIChatMessage: async function(role, message) {
+    try {
+      const history = this.getAIChatHistory(role);
+      const res = await fetch(`${this.API_BASE}/ai/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role, message, history })
+      });
+      if (res.ok) {
+        const result = await res.json();
+        if (result.success && result.data && result.data.reply) {
+          return { success: true, reply: result.data.reply };
+        }
+      }
+      return { success: false, error: 'Received invalid response format from AI Assistant service.' };
+    } catch (e) {
+      console.warn('AI Chat API endpoint connection error:', e.message);
+      return { success: false, error: 'Unable to connect to AI Assistant backend service. Please verify server is running.' };
+    }
+  },
+
   getNotifications: function(role) {
     if (!this.data.notifications) {
       this.data.notifications = [];

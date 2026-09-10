@@ -59,6 +59,9 @@ if (uri) {
   };
 }
 
+// Serve static frontend files
+app.use(express.static(path.join(__dirname, "..")));
+
 // API Routes
 app.use("/api/students", require("./routes/students"));
 app.use("/api/faculty", require("./routes/faculty"));
@@ -67,6 +70,7 @@ app.use("/api/announcements", require("./routes/announcements"));
 app.use("/api/tasks", require("./routes/tasks"));
 app.use("/api/notifications", require("./routes/notifications"));
 app.use("/api/community", require("./routes/community"));
+app.use("/api/ai", require("./routes/ai"));
 
 // Root Health Endpoint
 app.get("/", (req, res) => {

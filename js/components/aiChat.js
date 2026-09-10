@@ -4,6 +4,7 @@
 
 const AIChatComponent = {
   currentRole: 'student',
+  isProcessing: false,
 
   render: function(role) {
     this.currentRole = role;
@@ -21,12 +22,12 @@ const AIChatComponent = {
             <div>
               <h3 style="font-size: 1rem; font-weight: 700;">College AI Copilot (${role.toUpperCase()})</h3>
               <p style="font-size: 0.75rem; color: var(--status-success); display: flex; align-items: center; gap: 0.3rem;">
-                <span style="width: 6px; height: 6px; background: currentColor; border-radius: 50%;"></span> Online • Campus Fine-tuned GPT-4o Engine
+                <span style="width: 6px; height: 6px; background: currentColor; border-radius: 50%;"></span> Online • Conversational LLM Engine
               </p>
             </div>
           </div>
           <div style="display: flex; gap: 0.5rem;">
-            <button class="btn btn-secondary btn-sm" onclick="AIChatComponent.clearChat()">
+            <button class="btn btn-secondary btn-sm" id="btn-reset-chat" onclick="AIChatComponent.clearChat()">
               <i data-lucide="rotate-ccw"></i> Reset History
             </button>
           </div>
@@ -56,11 +57,11 @@ const AIChatComponent = {
           <button class="btn-icon" title="Attach PDF/Document" onclick="alert('Document upload simulation: PDF attached for AI processing.')">
             <i data-lucide="paperclip"></i>
           </button>
-          <input type="text" id="chat-user-input" class="input-field" placeholder="Ask anything about courses, exams, assignments, or college policies..." onkeypress="if(event.key==='Enter') AIChatComponent.handleInputSubmit()">
+          <input type="text" id="chat-user-input" class="input-field" placeholder="Ask anything about courses, exams, assignments, or college policies..." onkeydown="if(event.key==='Enter' && !event.shiftKey){ event.preventDefault(); AIChatComponent.handleInputSubmit(); }">
           <button class="btn-icon" title="Voice Input Simulation" onclick="AIChatComponent.simulateVoiceInput()">
             <i data-lucide="mic"></i>
           </button>
-          <button class="btn btn-primary" onclick="AIChatComponent.handleInputSubmit()">
+          <button class="btn btn-primary" id="chat-send-btn" onclick="AIChatComponent.handleInputSubmit()">
             <i data-lucide="send"></i>
           </button>
         </div>
@@ -69,6 +70,7 @@ const AIChatComponent = {
   },
 
   handleInputSubmit: function() {
+    if (this.isProcessing) return;
     const inputEl = document.getElementById('chat-user-input');
     const text = inputEl ? inputEl.value.trim() : '';
     if (!text) return;
@@ -77,9 +79,32 @@ const AIChatComponent = {
     if (inputEl) inputEl.value = '';
   },
 
-  sendMessage: function(text) {
+  formatMarkdown: function(text) {
+    if (!text) return '';
+    if (text.includes('<strong>') || text.includes('<br>')) return text;
+    return text
+      .replace(/^### (.*$)/gim, '<strong style="display:block; font-size:1rem; margin-top:0.4rem; margin-bottom:0.2rem; color:var(--primary-400);">$1</strong>')
+      .replace(/^#### (.*$)/gim, '<strong style="display:block; font-size:0.92rem; margin-top:0.3rem;">$1</strong>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/^- (.*$)/gim, '• $1')
+      .replace(/\n/g, '<br>');
+  },
+
+  setProcessingState: function(processing) {
+    this.isProcessing = processing;
+    const inputEl = document.getElementById('chat-user-input');
+    const sendBtn = document.getElementById('chat-send-btn');
+    if (inputEl) inputEl.disabled = processing;
+    if (sendBtn) sendBtn.disabled = processing;
+  },
+
+  sendMessage: async function(text) {
+    if (this.isProcessing) return;
     const body = document.getElementById('chat-messages-body');
     if (!body) return;
+
+    this.setProcessingState(true);
 
     // Save & render user message
     Store.addAIChatMessage(this.currentRole, 'user', text);
@@ -90,25 +115,28 @@ const AIChatComponent = {
     body.appendChild(userBubble);
     body.scrollTop = body.scrollHeight;
 
-    // Simulated Typing AI Response based on Role & Query
-    setTimeout(() => {
-      let aiReply = "I have processed your query regarding: '" + text + "'. Based on your course syllabus and university datastore, here is the requested information.";
-      const t = text.toLowerCase();
+    // Render typing indicator bubble
+    const typingBubble = document.createElement('div');
+    typingBubble.className = 'chat-bubble chat-bubble-ai';
+    typingBubble.id = 'ai-typing-indicator';
+    typingBubble.innerHTML = '<i data-lucide="sparkles" style="width:14px; height:14px; animation: spin 2s linear infinite;"></i> <span style="opacity: 0.8;">AI Assistant is thinking...</span>';
+    body.appendChild(typingBubble);
+    body.scrollTop = body.scrollHeight;
+    if (window.lucide) lucide.createIcons();
 
-      if (this.currentRole === 'student') {
-        if (t.includes('quiz') || t.includes('cs-401')) {
-          aiReply = "<strong>CS-401 Quiz 3 Study Breakdown:</strong><br>1. Autonomous Agent Control Loops<br>2. Vector Embeddings & RAG Architectures<br>3. Context Window Optimization & Fine-Tuning. Recommended textbook: Chapter 7 & 8.";
-        } else if (t.includes('tomorrow') || t.includes('classes') || t.includes('schedule')) {
-          aiReply = "<strong>Tomorrow's Schedule:</strong><br>• 10:00 AM - CS-308 Data Structures (Auditorium B)<br>• 01:00 PM - MATH-201 Linear Algebra (Room 102). Your homework submission for MATH-201 is due by midnight.";
-        }
-      } else if (this.currentRole === 'staff') {
-        if (t.includes('quiz') || t.includes('convolutional')) {
-          aiReply = "<strong>Generated 5-Question Quiz on CNNs:</strong><br>1. What is the purpose of Max Pooling layers?<br>2. Explain the receptive field calculation.<br>3. How does stride affect output spatial dimensions?<br>4. Compare 1x1 convolutions vs depthwise separable convolutions.<br>5. What causes gradient vanishing in deep CNNs?";
-        }
-      } else if (this.currentRole === 'admin') {
-        if (t.includes('attendance') || t.includes('report')) {
-          aiReply = "<strong>Monthly Campus Attendance Report Summary:</strong><br>• Overall Attendance: 95.1%<br>• Highest Attendance Department: Biotechnology (97.2%)<br>• Active AI Assistant Sessions: 14,280 queries / day.";
-        }
+    try {
+      // Call backend API via Store
+      const res = await Store.sendAIChatMessage(this.currentRole, text);
+
+      // Remove typing bubble
+      const currentTyping = document.getElementById('ai-typing-indicator');
+      if (currentTyping) currentTyping.remove();
+
+      let aiReply = '';
+      if (res.success && res.reply) {
+        aiReply = this.formatMarkdown(res.reply);
+      } else {
+        aiReply = `<span style="color: var(--status-danger);"><i data-lucide="alert-triangle" style="width:14px; height:14px; vertical-align:middle;"></i> ${res.error || 'The AI Assistant is currently unavailable. Please try again.'}</span>`;
       }
 
       Store.addAIChatMessage(this.currentRole, 'ai', aiReply);
@@ -120,7 +148,11 @@ const AIChatComponent = {
       body.scrollTop = body.scrollHeight;
 
       if (window.lucide) lucide.createIcons();
-    }, 500);
+    } finally {
+      this.setProcessingState(false);
+      const inputEl = document.getElementById('chat-user-input');
+      if (inputEl) inputEl.focus();
+    }
   },
 
   simulateVoiceInput: function() {
@@ -136,3 +168,4 @@ const AIChatComponent = {
     App.renderCurrentView();
   }
 };
+
