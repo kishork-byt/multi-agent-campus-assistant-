@@ -7,6 +7,11 @@ const App = {
   currentRoute: 'home',
 
   init: function() {
+    const savedTheme = localStorage.getItem('APP_THEME');
+    if (savedTheme) {
+      document.documentElement.setAttribute('data-theme', savedTheme);
+      document.body.setAttribute('data-theme', savedTheme);
+    }
     const isCollapsed = localStorage.getItem('SIDEBAR_COLLAPSED') === 'true';
     if (isCollapsed) document.body.classList.add('sidebar-collapsed');
     Store.syncStudentsFromBackend().then(() => {
@@ -37,9 +42,29 @@ const App = {
     Store.syncNotificationsFromBackend().then(() => {
       this.renderLayout();
     });
+    this.startCommunityAutoSync();
     this.bindEvents();
     this.handleRouting();
     window.addEventListener('hashchange', () => this.handleRouting());
+  },
+
+  startCommunityAutoSync: function() {
+    if (this._communitySyncInterval) return;
+    this._communitySyncInterval = setInterval(async () => {
+      if (this.currentRoute === 'community' || this.currentRoute === 'community-moderation') {
+        const prevPosts = Store.getCommunityPosts();
+        const prevLength = prevPosts.length;
+        const prevSupports = prevPosts.reduce((a, p) => a + (p.supportCount || 0), 0);
+        await Store.syncCommunityFromBackend();
+        const newPosts = Store.getCommunityPosts();
+        const newLength = newPosts.length;
+        const newSupports = newPosts.reduce((a, p) => a + (p.supportCount || 0), 0);
+
+        if (newLength !== prevLength || newSupports !== prevSupports) {
+          this.renderCurrentView();
+        }
+      }
+    }, 4000);
   },
 
   bindEvents: function() {
@@ -52,8 +77,7 @@ const App = {
         this.toggleSidebar();
       }
       if (e.target.closest('#close-mobile-sidebar')) {
-        const sidebar = document.getElementById('app-sidebar');
-        if (sidebar) sidebar.classList.remove('mobile-open');
+        this.closeSidebar();
       }
       if (e.target.closest('.sidebar-nav-item')) {
         const sidebar = document.getElementById('app-sidebar');
@@ -97,11 +121,22 @@ const App = {
     }
   },
 
+  closeSidebar: function() {
+    if (window.innerWidth <= 768) {
+      const sidebar = document.getElementById('app-sidebar');
+      if (sidebar) sidebar.classList.remove('mobile-open');
+    } else {
+      document.body.classList.add('sidebar-collapsed');
+      localStorage.setItem('SIDEBAR_COLLAPSED', 'true');
+    }
+  },
+
   toggleTheme: function() {
     const currentTheme = document.documentElement.getAttribute('data-theme') || document.body.getAttribute('data-theme') || 'dark';
     const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
     document.documentElement.setAttribute('data-theme', newTheme);
     document.body.setAttribute('data-theme', newTheme);
+    localStorage.setItem('APP_THEME', newTheme);
     const btnIcon = document.querySelector('#theme-toggle-btn i');
     if (btnIcon) {
       btnIcon.setAttribute('data-lucide', newTheme === 'dark' ? 'sun' : 'moon');
@@ -115,22 +150,94 @@ const App = {
     this.navigateTo(`${portal}/dashboard`);
   },
 
+  scrollToSection: function(sectionId) {
+    const landingSections = ['home', 'about', 'features', 'contact'];
+
+    if (this.currentPortal !== 'public' || this.currentRoute === 'login' || this.currentRoute === 'role-selection') {
+      this.navigateTo(sectionId);
+      return;
+    }
+
+    const targetEl = document.getElementById(sectionId);
+    if (targetEl) {
+      if (sectionId === 'home') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        targetEl.scrollIntoView({ behavior: 'smooth' });
+      }
+      this.currentRoute = sectionId;
+      if (history.replaceState) {
+        history.replaceState(null, '', '#/' + sectionId);
+      }
+      this.updateActiveNavLink(sectionId);
+    }
+  },
+
+  updateActiveNavLink: function(activeSectionId) {
+    document.querySelectorAll('.desktop-nav .nav-link').forEach(link => {
+      link.classList.remove('active');
+    });
+    const activeLink = document.querySelector(`.desktop-nav .nav-item-${activeSectionId}`);
+    if (activeLink) activeLink.classList.add('active');
+  },
+
+  initScrollSpy: function() {
+    if (this._scrollSpyHandler) {
+      window.removeEventListener('scroll', this._scrollSpyHandler);
+    }
+    this._scrollSpyHandler = () => {
+      if (this.currentPortal !== 'public' || this.currentRoute === 'login' || this.currentRoute === 'role-selection') return;
+      const sections = ['home', 'about', 'features', 'contact'];
+      let currentSection = 'home';
+      const scrollPosition = window.scrollY + 120;
+
+      for (const sectionId of sections) {
+        const el = document.getElementById(sectionId);
+        if (el) {
+          const top = el.offsetTop - 80;
+          const height = el.offsetHeight;
+          if (scrollPosition >= top && scrollPosition < top + height) {
+            currentSection = sectionId;
+            break;
+          }
+        }
+      }
+      this.updateActiveNavLink(currentSection);
+      this.currentRoute = currentSection;
+      if (history.replaceState && window.location.hash !== '#/' + currentSection && window.location.hash !== '#' + currentSection) {
+        history.replaceState(null, '', '#/' + currentSection);
+      }
+    };
+    window.addEventListener('scroll', this._scrollSpyHandler, { passive: true });
+  },
+
   navigateTo: function(hash) {
     window.location.hash = hash.startsWith('/') ? hash : '/' + hash;
   },
 
   handleRouting: function() {
-    let hash = window.location.hash.replace('#/', '').trim();
-    if (!hash) hash = 'home';
+    let rawHash = window.location.hash.replace('#/', '').replace('#', '').trim();
+    if (!rawHash) rawHash = 'home';
 
-    const parts = hash.split('/');
+    const landingSections = ['home', 'about', 'features', 'contact'];
+    const parts = rawHash.split('/');
+
+    let newPortal = 'public';
+    let newRoute = 'home';
+
     if (parts.length === 1) {
-      this.currentPortal = 'public';
-      this.currentRoute = parts[0];
+      newPortal = 'public';
+      newRoute = parts[0];
     } else {
-      this.currentPortal = parts[0];
-      this.currentRoute = parts[1];
+      newPortal = parts[0];
+      newRoute = parts[1];
     }
+
+    const isCurrentlyOnLandingPage = (this.currentPortal === 'public' && landingSections.includes(this.currentRoute) && document.getElementById('landing-container') !== null);
+    const isNavigatingToLandingSection = (newPortal === 'public' && landingSections.includes(newRoute));
+
+    this.currentPortal = newPortal;
+    this.currentRoute = newRoute;
 
     document.body.setAttribute('data-portal', this.currentPortal);
     if (this.currentPortal === 'public') {
@@ -150,7 +257,39 @@ const App = {
     const sidebar = document.getElementById('app-sidebar');
     if (sidebar) sidebar.classList.remove('mobile-open');
 
+    if (isCurrentlyOnLandingPage && isNavigatingToLandingSection) {
+      this.initScrollSpy();
+      const targetEl = document.getElementById(newRoute);
+      if (targetEl) {
+        if (newRoute === 'home') {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else {
+          targetEl.scrollIntoView({ behavior: 'smooth' });
+        }
+      }
+      this.updateActiveNavLink(newRoute);
+      return;
+    }
+
     this.renderLayout();
+
+    if (this.currentPortal === 'public') {
+      this.initScrollSpy();
+      if (landingSections.includes(this.currentRoute)) {
+        const targetSection = this.currentRoute;
+        setTimeout(() => {
+          const targetEl = document.getElementById(targetSection);
+          if (targetEl) {
+            if (targetSection === 'home') {
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            } else {
+              targetEl.scrollIntoView({ behavior: 'smooth' });
+            }
+          }
+          this.updateActiveNavLink(targetSection);
+        }, 60);
+      }
+    }
 
     if (this.currentRoute === 'community' || this.currentRoute === 'community-moderation') {
       Store.syncCommunityFromBackend().then(() => this.renderCurrentView());
@@ -220,9 +359,41 @@ const App = {
       ${ModalsComponent.renderEditVenueModal()}
       ${ModalsComponent.renderEventDetailsModal()}
       ${ModalsComponent.renderCreateAnonymousPostModal()}
+      ${ModalsComponent.renderCustomizeAnonymousProfileModal()}
+      ${ModalsComponent.renderReportPostModal ? ModalsComponent.renderReportPostModal() : ''}
+      ${ModalsComponent.renderAnonymityShieldModal ? ModalsComponent.renderAnonymityShieldModal() : ''}
+      ${ModalsComponent.renderEmergencySupportModal ? ModalsComponent.renderEmergencySupportModal() : ''}
+      <div id="toast-container" style="position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 9999; display: flex; flex-direction: column; gap: 0.5rem; pointer-events: none;"></div>
     `;
 
     this.renderCurrentView();
+  },
+
+  showToast: function(message, type = 'info') {
+    let container = document.getElementById('toast-container');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'toast-container';
+      container.style.cssText = 'position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 9999; display: flex; flex-direction: column; gap: 0.5rem; pointer-events: none;';
+      document.body.appendChild(container);
+    }
+
+    const toast = document.createElement('div');
+    const bg = type === 'success' ? 'var(--accent-emerald, #10b981)' : type === 'error' ? 'var(--status-error, #ef4444)' : 'var(--accent-violet, #7c3aed)';
+    toast.style.cssText = `background: ${bg}; color: #ffffff; padding: 0.65rem 1.15rem; border-radius: 8px; font-size: 0.85rem; font-weight: 600; box-shadow: 0 4px 15px rgba(0,0,0,0.2); transition: all 0.3s ease; pointer-events: auto; transform: translateY(10px); opacity: 0;`;
+    toast.textContent = message;
+
+    container.appendChild(toast);
+    setTimeout(() => {
+      toast.style.transform = 'translateY(0)';
+      toast.style.opacity = '1';
+    }, 10);
+
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateY(10px)';
+      setTimeout(() => toast.remove(), 300);
+    }, 3200);
   },
 
   renderCurrentView: function() {
@@ -282,6 +453,20 @@ const App = {
     }
 
     container.innerHTML = content;
+
+    // Initialize or destroy landing canvas engine based on active page
+    const landingSections = ['home', 'about', 'features', 'contact'];
+    if (this.currentPortal === 'public' && (landingSections.includes(this.currentRoute) || !this.currentRoute)) {
+      setTimeout(() => {
+        if (typeof LandingCanvasEngine !== 'undefined') {
+          LandingCanvasEngine.init();
+        }
+      }, 30);
+    } else {
+      if (typeof LandingCanvasEngine !== 'undefined') {
+        LandingCanvasEngine.destroy();
+      }
+    }
 
     // Refresh icons
     if (window.lucide) {

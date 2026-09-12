@@ -81,9 +81,19 @@
   }
 
   /* Public Hero responsive adjustment */
-  .hero-section {
+  .hero-section, .landing-hero {
     padding: 3rem 1rem !important;
+  }
+
+  .landing-hero-grid {
+    grid-template-columns: 1fr;
+    gap: 2rem;
     text-align: center;
+  }
+
+  .landing-footer-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
   }
 
   .hero-title {

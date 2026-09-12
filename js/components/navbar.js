@@ -9,7 +9,7 @@ const NavbarComponent = {
 
     return `
       <header class="app-navbar">
-        <div class="navbar-brand">
+        <div class="navbar-brand" style="${isPublic ? 'cursor: pointer;' : ''}" ${isPublic ? 'onclick="App.scrollToSection(\'home\')"' : ''}>
           ${!isPublic ? `
             <button class="btn-icon mobile-menu-btn" id="toggle-mobile-sidebar" title="Toggle Navigation">
               <i data-lucide="menu"></i>
@@ -23,10 +23,10 @@ const NavbarComponent = {
 
         ${isPublic ? `
           <ul class="navbar-nav desktop-nav">
-            <li><a href="#/home" class="nav-link ${currentRoute === 'home' ? 'active' : ''}">Home</a></li>
-            <li><a href="#/about" class="nav-link ${currentRoute === 'about' ? 'active' : ''}">About</a></li>
-            <li><a href="#/features" class="nav-link ${currentRoute === 'features' ? 'active' : ''}">Features</a></li>
-            <li><a href="#/contact" class="nav-link ${currentRoute === 'contact' ? 'active' : ''}">Contact</a></li>
+            <li><a href="#home" onclick="App.scrollToSection('home'); return false;" class="nav-link nav-item-home ${currentRoute === 'home' || !currentRoute ? 'active' : ''}">Home</a></li>
+            <li><a href="#about" onclick="App.scrollToSection('about'); return false;" class="nav-link nav-item-about ${currentRoute === 'about' ? 'active' : ''}">About</a></li>
+            <li><a href="#features" onclick="App.scrollToSection('features'); return false;" class="nav-link nav-item-features ${currentRoute === 'features' ? 'active' : ''}">Features</a></li>
+            <li><a href="#contact" onclick="App.scrollToSection('contact'); return false;" class="nav-link nav-item-contact ${currentRoute === 'contact' ? 'active' : ''}">Contact</a></li>
           </ul>
         ` : `
           <div class="portal-indicator-badge">

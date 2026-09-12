@@ -3,6 +3,8 @@
    ========================================================================== */
 
 const ModalsComponent = {
+  selectedMedia: null,
+
   renderAddStudentModal: function() {
     return `
       <div class="modal-overlay" id="modal-add-student">
@@ -481,49 +483,171 @@ const ModalsComponent = {
           </div>
           <div class="modal-body">
             <form id="form-create-anonymous-post" onsubmit="event.preventDefault(); ModalsComponent.handleCreateAnonymousPostSubmit();">
-              <div class="form-group">
-                <label class="form-label">Post Category</label>
-                <select id="new-post-category" class="input-field select-field">
-                  <option>Academic</option>
-                  <option>Campus Issue</option>
-                  <option>Infrastructure</option>
-                  <option>Safety</option>
-                  <option>Events</option>
-                  <option>Transport</option>
-                  <option>Hostel</option>
-                  <option>Other</option>
-                </select>
-              </div>
-
-              <div class="form-group">
-                <label class="form-label">Post Description / Feedback</label>
-                <textarea id="new-post-text" class="input-field" rows="4" placeholder="Share your campus thoughts, feedback, or issues... Your real name and ID are strictly hidden." required style="resize: vertical; min-height: 100px;"></textarea>
-              </div>
-
               <div class="grid-cols-2">
                 <div class="form-group">
-                  <label class="form-label">Media Attachment (Optional)</label>
-                  <select id="new-post-media-type" class="input-field select-field">
-                    <option value="none">None</option>
-                    <option value="image">Image Attachment</option>
-                    <option value="video">Video Attachment</option>
+                  <label class="form-label">Post Category</label>
+                  <select id="new-post-category" class="input-field select-field">
+                    <option value="Academic">Academic</option>
+                    <option value="Campus Issue">Campus Issue (Support Issue)</option>
+                    <option value="Infrastructure">Infrastructure</option>
+                    <option value="Safety">Safety</option>
+                    <option value="Events">Events</option>
+                    <option value="Transport">Transport</option>
+                    <option value="Hostel">Hostel</option>
+                    <option value="Other">Other</option>
                   </select>
                 </div>
                 <div class="form-group">
-                  <label class="form-label">Attachment URL (Optional)</label>
-                  <input type="text" id="new-post-media-url" class="input-field" placeholder="https://..." >
+                  <label class="form-label">Post Format / Type</label>
+                  <select id="new-post-type" class="input-field select-field" onchange="ModalsComponent.togglePostTypeFields(this.value)">
+                    <option value="text">Standard Text / Post</option>
+                    <option value="image">Image Attachment</option>
+                    <option value="video">Video Attachment</option>
+                    <option value="poll">Campus Poll / Survey</option>
+                    <option value="event">Campus Event Announcement</option>
+                    <option value="support">Campus Support Issue Report</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Post Description / Issue Details</label>
+                <textarea id="new-post-text" class="input-field" rows="4" placeholder="Share your campus thoughts, feedback, or report a support issue... Your real name and ID are strictly hidden." required style="resize: vertical; min-height: 100px;"></textarea>
+              </div>
+
+              <!-- Conditional Poll Fields -->
+              <div id="new-post-poll-fields" style="display: none; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.85rem; background: var(--bg-main); margin-bottom: 1rem;">
+                <label class="form-label" style="font-weight: 700;">Poll Choices</label>
+                <div style="display: flex; flex-direction: column; gap: 0.5rem;" id="poll-options-inputs">
+                  <input type="text" class="input-field poll-option-input" placeholder="Choice 1 (e.g. Strongly Agree / Yes)">
+                  <input type="text" class="input-field poll-option-input" placeholder="Choice 2 (e.g. Disagree / No)">
+                  <input type="text" class="input-field poll-option-input" placeholder="Choice 3 (Optional)">
+                </div>
+              </div>
+
+              <!-- Conditional Event Fields -->
+              <div id="new-post-event-fields" style="display: none; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.85rem; background: var(--bg-main); margin-bottom: 1rem;">
+                <label class="form-label" style="font-weight: 700;">Campus Event Details</label>
+                <div class="grid-cols-2" style="margin-bottom: 0.5rem;">
+                  <div>
+                    <label class="form-label" style="font-size: 0.78rem;">Event Title</label>
+                    <input type="text" id="new-post-event-title" class="input-field" placeholder="e.g. Tech Summit 2026">
+                  </div>
+                  <div>
+                    <label class="form-label" style="font-size: 0.78rem;">Event Date &amp; Time</label>
+                    <input type="text" id="new-post-event-date" class="input-field" placeholder="e.g. Oct 25, 4:00 PM">
+                  </div>
+                </div>
+                <div>
+                  <label class="form-label" style="font-size: 0.78rem;">Location / Venue</label>
+                  <input type="text" id="new-post-event-loc" class="input-field" placeholder="e.g. Main Auditorium / Tech Hub">
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" style="display: flex; justify-content: space-between; align-items: center;">
+                  <span>Media Attachment (Optional)</span>
+                </label>
+                <small style="color: var(--text-muted); font-size: 0.8rem; display: block; margin-bottom: 0.5rem;">
+                  Upload an image or video from your device (optional)
+                </small>
+
+                <!-- Hidden File Input -->
+                <input type="file" id="new-post-media-file" accept="image/jpeg,image/jpg,image/png,image/webp,video/mp4,video/webm,video/quicktime,video/mov,image/*,video/*" style="display: none;" onchange="ModalsComponent.handlePostMediaSelect(this)">
+
+                <!-- Device Upload Button / Click Zone -->
+                <div id="new-post-media-upload-area" onclick="document.getElementById('new-post-media-file').click();" style="border: 2px dashed var(--border-color); border-radius: var(--radius-md); padding: 1.25rem 1rem; text-align: center; background: var(--bg-main); cursor: pointer; transition: all var(--transition-fast);">
+                  <div style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem;">
+                    <div style="width: 44px; height: 44px; border-radius: 50%; background: rgba(124, 58, 237, 0.12); color: var(--accent-violet); display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">
+                      📎
+                    </div>
+                    <div>
+                      <button type="button" class="btn btn-secondary btn-sm" style="pointer-events: none; margin-bottom: 0.35rem; font-weight: 600;">
+                        📎 Upload from Device
+                      </button>
+                      <div style="font-size: 0.75rem; color: var(--text-muted);">
+                        Images (JPG, PNG, WEBP) &amp; Videos (MP4, WEBM, MOV)
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Selected Media Preview Box -->
+                <div id="new-post-media-preview-container" style="display: none; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.85rem; background: var(--bg-main); margin-top: 0.5rem;">
+                  <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 0.65rem;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; overflow: hidden;">
+                      <span id="new-post-media-file-icon" style="font-size: 1.1rem; flex-shrink: 0;">🖼️</span>
+                      <div style="overflow: hidden;">
+                        <div id="new-post-media-file-name" style="font-size: 0.85rem; font-weight: 600; color: var(--text-main); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">filename.jpg</div>
+                        <div id="new-post-media-file-size" style="font-size: 0.75rem; color: var(--text-muted);">1.2 MB</div>
+                      </div>
+                    </div>
+                    <button type="button" class="btn btn-ghost btn-sm" style="color: var(--status-error); flex-shrink: 0; padding: 0.3rem 0.65rem;" onclick="ModalsComponent.clearPostMediaSelection()">
+                      <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i> Remove
+                    </button>
+                  </div>
+                  <div id="new-post-media-preview-box" style="border-radius: var(--radius-sm); overflow: hidden; max-height: 220px; background: #000; display: flex; justify-content: center; align-items: center;">
+                  </div>
                 </div>
               </div>
 
               <div class="card glass-panel" style="background: rgba(124, 58, 237, 0.1); border-color: rgba(124, 58, 237, 0.25); padding: 0.75rem 1rem; font-size: 0.82rem; margin-top: 0.5rem;">
                 <i data-lucide="shield-check" style="color: var(--accent-violet);"></i> 
-                <strong>Privacy Guarantee:</strong> This post will be published anonymously as "Anonymous Student" or "Anonymous Faculty".
+                <strong>Privacy Guarantee:</strong> Published anonymously with your custom handle (e.g. OceanSoul, SilentReader). Real identity is strictly hidden.
               </div>
             </form>
           </div>
           <div class="modal-footer">
             <button class="btn btn-secondary" onclick="ModalsComponent.closeModal('modal-create-anonymous-post')">Cancel</button>
             <button class="btn btn-primary" onclick="document.getElementById('form-create-anonymous-post').requestSubmit()">Publish Anonymous Post</button>
+          </div>
+        </div>
+      </div>
+    `;
+  },
+
+  renderCustomizeAnonymousProfileModal: function() {
+    const currentProfile = (typeof CommunityView !== 'undefined' && CommunityView.getAnonymousProfile) ? CommunityView.getAnonymousProfile() : { displayName: 'OceanSoul' };
+
+    return `
+      <div class="modal-overlay" id="modal-customize-anonymous-profile">
+        <div class="modal-content" style="max-width: 460px;">
+          <div class="modal-header">
+            <h3 class="card-title"><i data-lucide="settings"></i> Customize Anonymous Profile</h3>
+            <button class="btn-icon" onclick="ModalsComponent.closeModal('modal-customize-anonymous-profile')">
+              <i data-lucide="x"></i>
+            </button>
+          </div>
+          <div class="modal-body">
+            <form id="form-customize-anonymous-profile" onsubmit="event.preventDefault(); ModalsComponent.handleCustomizeAnonymousProfileSubmit();">
+              <div class="form-group">
+                <label class="form-label">Anonymous Display Name</label>
+                <input type="text" id="anon-custom-handle" class="input-field" value="${currentProfile.displayName || 'OceanSoul'}" placeholder="e.g. OceanSoul, NightOwl, SilentReader, GreenLeaf" required>
+                <small style="color: var(--text-muted); font-size: 0.75rem; margin-top: 0.35rem; display: block;">
+                  Pick a creative alias. Your real student/faculty name and ID remain 100% hidden.
+                </small>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Avatar Theme Gradient</label>
+                <select id="anon-custom-avatar-bg" class="input-field select-field">
+                  <option value="linear-gradient(135deg, #7c3aed 0%, #2563eb 100%)">Purple Violet (Default)</option>
+                  <option value="linear-gradient(135deg, #06b6d4 0%, #10b981 100%)">Ocean Cyan & Emerald</option>
+                  <option value="linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%)">Pink & Sunset Violet</option>
+                  <option value="linear-gradient(135deg, #f59e0b 0%, #ef4444 100%)">Amber & Crimson Flame</option>
+                  <option value="linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)">Classic Deep Blue</option>
+                </select>
+              </div>
+
+              <div class="card glass-panel" style="background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.25); padding: 0.75rem 1rem; font-size: 0.82rem;">
+                <i data-lucide="shield-check" style="color: var(--accent-emerald);"></i> 
+                <strong>Privacy Guaranteed:</strong> Changing your alias updates how you appear on the Anonymous Campus feed without linking to your actual portal identity.
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="ModalsComponent.closeModal('modal-customize-anonymous-profile')">Cancel</button>
+            <button class="btn btn-primary" onclick="document.getElementById('form-customize-anonymous-profile').requestSubmit()">Save Profile</button>
           </div>
         </div>
       </div>
@@ -538,6 +662,9 @@ const ModalsComponent = {
   closeModal: function(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) modal.classList.remove('active');
+    if (modalId === 'modal-create-anonymous-post') {
+      this.clearPostMediaSelection();
+    }
   },
 
   handleStudentSubmit: function() {
@@ -856,8 +983,6 @@ const ModalsComponent = {
   handleCreateAnonymousPostSubmit: async function() {
     const textEl = document.getElementById('new-post-text');
     const categoryEl = document.getElementById('new-post-category');
-    const mediaTypeEl = document.getElementById('new-post-media-type');
-    const mediaUrlEl = document.getElementById('new-post-media-url');
 
     if (!textEl || !textEl.value.trim()) {
       alert('Please enter your post content.');
@@ -866,8 +991,8 @@ const ModalsComponent = {
 
     const text = textEl.value.trim();
     const category = categoryEl ? categoryEl.value : 'General';
-    const mediaType = mediaTypeEl ? mediaTypeEl.value : 'none';
-    const mediaUrl = mediaUrlEl ? mediaUrlEl.value.trim() : '';
+    const mediaType = this.selectedMedia ? this.selectedMedia.type : 'none';
+    const mediaUrl = this.selectedMedia ? this.selectedMedia.dataUrl : '';
 
     // Show confirmation before publishing
     if (!confirm('Confirm publishing this post anonymously to the Campus Community?')) {
@@ -889,19 +1014,285 @@ const ModalsComponent = {
       alert(`[AI Moderation Notice]\nYour post contains link patterns that require review. It will be marked as 'Flagged for Review' for campus safety.`);
     }
 
+    const typeEl = document.getElementById('new-post-type');
+    const postType = typeEl ? typeEl.value : (mediaType !== 'none' ? mediaType : 'text');
+
+    let pollData = null;
+    if (postType === 'poll') {
+      const pollInputs = document.querySelectorAll('.poll-option-input');
+      const options = [];
+      pollInputs.forEach((inp, idx) => {
+        if (inp.value.trim()) {
+          options.push({ optionId: 'opt_' + (idx + 1), text: inp.value.trim(), votes: 0, voters: [] });
+        }
+      });
+      if (options.length < 2) {
+        options.push({ optionId: 'opt_1', text: 'Agree / Yes', votes: 0, voters: [] });
+        options.push({ optionId: 'opt_2', text: 'Disagree / No', votes: 0, voters: [] });
+      }
+      pollData = { options };
+    }
+
+    let eventData = null;
+    if (postType === 'event') {
+      const title = document.getElementById('new-post-event-title')?.value.trim() || 'Campus Event';
+      const date = document.getElementById('new-post-event-date')?.value.trim() || 'Upcoming';
+      const location = document.getElementById('new-post-event-loc')?.value.trim() || 'Main Campus';
+      eventData = { title, date, location };
+    }
+
     // Add post to Store & Backend
+    const anonProfile = (typeof CommunityView !== 'undefined' && CommunityView.getAnonymousProfile) ? CommunityView.getAnonymousProfile() : { displayName: 'OceanSoul' };
+
     await Store.addCommunityPost({
       category,
       text,
       mediaType,
-      mediaUrl
+      mediaUrl,
+      postType,
+      pollData,
+      eventData,
+      anonymousHandle: anonProfile.displayName
     });
 
     // Reset inputs
     textEl.value = '';
-    if (mediaUrlEl) mediaUrlEl.value = '';
+    this.clearPostMediaSelection();
 
     this.closeModal('modal-create-anonymous-post');
     App.renderCurrentView();
+  },
+
+  handlePostMediaSelect: function(input) {
+    const file = input.files && input.files[0];
+    if (!file) return;
+
+    const isImage = file.type.startsWith('image/');
+    const isVideo = file.type.startsWith('video/');
+
+    if (!isImage && !isVideo) {
+      alert('Please select a valid image (JPG, PNG, WEBP) or video (MP4, WEBM, MOV).');
+      input.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target.result;
+      const mediaType = isImage ? 'image' : 'video';
+      const formattedSize = this.formatFileSize(file.size);
+
+      this.selectedMedia = {
+        type: mediaType,
+        dataUrl: dataUrl,
+        fileName: file.name,
+        fileSize: formattedSize
+      };
+
+      const uploadArea = document.getElementById('new-post-media-upload-area');
+      const previewContainer = document.getElementById('new-post-media-preview-container');
+      const fileNameEl = document.getElementById('new-post-media-file-name');
+      const fileSizeEl = document.getElementById('new-post-media-file-size');
+      const iconEl = document.getElementById('new-post-media-file-icon');
+      const previewBox = document.getElementById('new-post-media-preview-box');
+
+      if (uploadArea) uploadArea.style.display = 'none';
+      if (previewContainer) previewContainer.style.display = 'block';
+
+      if (fileNameEl) fileNameEl.textContent = file.name;
+      if (fileSizeEl) fileSizeEl.textContent = formattedSize;
+      if (iconEl) iconEl.textContent = isImage ? '🖼️' : '🎬';
+
+      if (previewBox) {
+        if (isImage) {
+          previewBox.innerHTML = `<img src="${dataUrl}" alt="Media Preview" style="max-width: 100%; max-height: 200px; object-fit: contain;">`;
+        } else {
+          previewBox.innerHTML = `<video src="${dataUrl}" controls style="max-width: 100%; max-height: 200px; border-radius: 4px;"></video>`;
+        }
+      }
+
+      if (window.lucide) lucide.createIcons();
+    };
+
+    reader.readAsDataURL(file);
+  },
+
+  clearPostMediaSelection: function() {
+    this.selectedMedia = null;
+    const fileInput = document.getElementById('new-post-media-file');
+    if (fileInput) fileInput.value = '';
+
+    const uploadArea = document.getElementById('new-post-media-upload-area');
+    const previewContainer = document.getElementById('new-post-media-preview-container');
+    const previewBox = document.getElementById('new-post-media-preview-box');
+
+    if (uploadArea) uploadArea.style.display = 'block';
+    if (previewContainer) previewContainer.style.display = 'none';
+    if (previewBox) previewBox.innerHTML = '';
+  },
+
+  formatFileSize: function(bytes) {
+    if (!bytes || bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  },
+
+  handleCustomizeAnonymousProfileSubmit: function() {
+    const handleEl = document.getElementById('anon-custom-handle');
+    const avatarBgEl = document.getElementById('anon-custom-avatar-bg');
+
+    const displayName = handleEl ? handleEl.value.trim() : 'OceanSoul';
+    const avatarBg = avatarBgEl ? avatarBgEl.value : 'linear-gradient(135deg, #7c3aed 0%, #2563eb 100%)';
+
+    if (typeof CommunityView !== 'undefined' && CommunityView.saveAnonymousProfile) {
+      CommunityView.saveAnonymousProfile(displayName, avatarBg);
+    }
+    this.closeModal('modal-customize-anonymous-profile');
+    if (window.App && App.showToast) App.showToast('Anonymous profile updated!', 'success');
+  },
+
+  togglePostTypeFields: function(type) {
+    const pollFields = document.getElementById('new-post-poll-fields');
+    const eventFields = document.getElementById('new-post-event-fields');
+    const mediaGroup = document.getElementById('new-post-media-upload-area') ? document.getElementById('new-post-media-upload-area').parentElement : null;
+
+    if (pollFields) pollFields.style.display = type === 'poll' ? 'block' : 'none';
+    if (eventFields) eventFields.style.display = type === 'event' ? 'block' : 'none';
+  },
+
+  openReportPostModal: function(postId) {
+    this.reportingPostId = postId;
+    this.openModal('modal-report-post');
+  },
+
+  handleReportPostSubmit: async function() {
+    const reasonEl = document.getElementById('report-post-reason');
+    const detailsEl = document.getElementById('report-post-details');
+
+    const reason = reasonEl ? reasonEl.value : 'Other';
+    const details = detailsEl ? detailsEl.value.trim() : '';
+
+    if (this.reportingPostId) {
+      await Store.reportCommunityPostWithReason(this.reportingPostId, reason, details);
+      this.closeModal('modal-report-post');
+      if (window.App && App.showToast) App.showToast('Report submitted to Campus AI Moderation', 'success');
+      App.renderCurrentView();
+    }
+  },
+
+  renderReportPostModal: function() {
+    return `
+      <div class="modal-overlay" id="modal-report-post">
+        <div class="modal-content" style="max-width: 480px;">
+          <div class="modal-header">
+            <h3 class="card-title"><i data-lucide="flag" style="color: var(--status-error);"></i> Report Anonymous Post</h3>
+            <button class="btn-icon" onclick="ModalsComponent.closeModal('modal-report-post')">
+              <i data-lucide="x"></i>
+            </button>
+          </div>
+          <div class="modal-body">
+            <form id="form-report-post" onsubmit="event.preventDefault(); ModalsComponent.handleReportPostSubmit();">
+              <div class="form-group">
+                <label class="form-label">Reason for Report</label>
+                <select id="report-post-reason" class="input-field select-field">
+                  <option value="Spam / Phishing">Spam or Phishing Link</option>
+                  <option value="Hate Speech / Harassment">Harassment or Hate Speech</option>
+                  <option value="Offensive Language">Abusive / Offensive Language</option>
+                  <option value="Misinformation">False / Misleading Information</option>
+                  <option value="Other">Other Community Guideline Violation</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Additional Details (Optional)</label>
+                <textarea id="report-post-details" class="input-field" rows="3" placeholder="Explain why this post should be reviewed by Campus AI Moderation..."></textarea>
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="ModalsComponent.closeModal('modal-report-post')">Cancel</button>
+            <button class="btn btn-primary" style="background: var(--status-error);" onclick="document.getElementById('form-report-post').requestSubmit()">Submit Report</button>
+          </div>
+        </div>
+      </div>
+    `;
+  },
+
+  renderAnonymityShieldModal: function() {
+    return `
+      <div class="modal-overlay" id="modal-anonymity-shield">
+        <div class="modal-content" style="max-width: 520px;">
+          <div class="modal-header">
+            <h3 class="card-title"><i data-lucide="shield-check" style="color: var(--accent-emerald);"></i> Your Anonymity Shield Protection</h3>
+            <button class="btn-icon" onclick="ModalsComponent.closeModal('modal-anonymity-shield')">
+              <i data-lucide="x"></i>
+            </button>
+          </div>
+          <div class="modal-body" style="display: flex; flex-direction: column; gap: 1rem;">
+            <div class="card glass-panel" style="background: rgba(16, 185, 129, 0.08); border-color: rgba(16, 185, 129, 0.3); padding: 1rem; border-radius: var(--radius-md);">
+              <strong style="color: var(--accent-emerald); font-size: 0.95rem; display: block; margin-bottom: 0.35rem;">100% Identity Protection Guaranteed</strong>
+              <p style="font-size: 0.85rem; color: var(--text-main); margin: 0; line-height: 1.4;">
+                Your real name, email address, student ID, and IP metadata are strictly hidden. Only your custom alias handle (e.g. <em>OceanSoul</em>) and general portal role (<em>Anonymous Student</em> / <em>Anonymous Faculty</em>) are displayed.
+              </p>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 0.75rem; font-size: 0.85rem;">
+              <div style="display: flex; align-items: center; gap: 0.65rem;">
+                <i data-lucide="lock" style="color: var(--accent-violet);"></i>
+                <span><strong>No Identity Tracking:</strong> Posts and comments are indexed by randomized token IDs.</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 0.65rem;">
+                <i data-lucide="cpu" style="color: var(--accent-cyan);"></i>
+                <span><strong>AI Moderation Guard:</strong> Protects against hate speech and spam without human bias.</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 0.65rem;">
+                <i data-lucide="check-circle" style="color: var(--accent-emerald);"></i>
+                <span><strong>Encrypted Sessions:</strong> Custom handles update safely without linking to portal identity.</span>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-primary" onclick="ModalsComponent.closeModal('modal-anonymity-shield')">Got It</button>
+          </div>
+        </div>
+      </div>
+    `;
+  },
+
+  renderEmergencySupportModal: function() {
+    return `
+      <div class="modal-overlay" id="modal-emergency-support">
+        <div class="modal-content" style="max-width: 500px;">
+          <div class="modal-header">
+            <h3 class="card-title"><i data-lucide="phone-call" style="color: var(--accent-amber);"></i> Campus Emergency Helplines &amp; Support</h3>
+            <button class="btn-icon" onclick="ModalsComponent.closeModal('modal-emergency-support')">
+              <i data-lucide="x"></i>
+            </button>
+          </div>
+          <div class="modal-body" style="display: flex; flex-direction: column; gap: 1rem;">
+            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+              <div style="padding: 0.85rem; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: var(--bg-main);">
+                <strong style="color: var(--status-error); font-size: 0.9rem; display: block;">Campus Security &amp; Safety Control Room</strong>
+                <span style="font-size: 0.85rem; color: var(--text-main); font-weight: 700; display: block; margin-top: 0.2rem;">📞 +1 (800) 555-CAMPUS (Ext 911)</span>
+                <span style="font-size: 0.78rem; color: var(--text-muted); display: block; margin-top: 0.15rem;">Location: Admin Block A, Ground Floor (24/7 Security Desk)</span>
+              </div>
+              <div style="padding: 0.85rem; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: var(--bg-main);">
+                <strong style="color: var(--accent-violet); font-size: 0.9rem; display: block;">Student Mental Health &amp; Counseling Helpline</strong>
+                <span style="font-size: 0.85rem; color: var(--text-main); font-weight: 700; display: block; margin-top: 0.2rem;">📞 +1 (800) 555-CARE (Confidential)</span>
+                <span style="font-size: 0.78rem; color: var(--text-muted); display: block; margin-top: 0.15rem;">Available 24 hours a day for confidential counseling.</span>
+              </div>
+              <div style="padding: 0.85rem; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: var(--bg-main);">
+                <strong style="color: var(--accent-emerald); font-size: 0.9rem; display: block;">Campus Health &amp; Medical Center</strong>
+                <span style="font-size: 0.85rem; color: var(--text-main); font-weight: 700; display: block; margin-top: 0.2rem;">📞 +1 (800) 555-HEAL</span>
+                <span style="font-size: 0.78rem; color: var(--text-muted); display: block; margin-top: 0.15rem;">Location: Student Activity Center Block C</span>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="ModalsComponent.closeModal('modal-emergency-support')">Close</button>
+          </div>
+        </div>
+      </div>
+    `;
   }
 };

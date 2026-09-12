@@ -68,6 +68,7 @@ router.post("/posts", async (req, res) => {
     const aiResult = await AiModerationService.analyzePost(req.body);
     const postData = {
       ...req.body,
+      anonymousHandle: req.body.anonymousHandle || "OceanSoul",
       status: aiResult.status,
       toxicScore: aiResult.toxicScore,
       fakeScore: aiResult.fakeScore,
@@ -85,10 +86,14 @@ router.post("/posts", async (req, res) => {
         _id: "post_" + Date.now(),
         postId: postData.postId || "post_" + Date.now(),
         authorRole: postData.authorRole || "student",
+        anonymousHandle: postData.anonymousHandle || "OceanSoul",
         category: postData.category || "General",
         text: postData.text || "",
         mediaType: postData.mediaType || "none",
         mediaUrl: postData.mediaUrl || "",
+        postType: postData.postType || "text",
+        pollData: postData.pollData || null,
+        eventData: postData.eventData || null,
         timestamp: postData.timestamp || "Just now",
         supportCount: postData.supportCount || 0,
         supportedBy: postData.supportedBy || [],
@@ -298,14 +303,93 @@ router.post("/support", async (req, res) => {
   }
 });
 
-// GET /api/community/support - List all support issue logs
-router.get("/support", async (req, res) => {
+  }
+});
+
+/* -------------------------------------------------------------------------- */
+/* 4. POLL VOTING & POST REPORTING ENDPOINTS                                  */
+/* -------------------------------------------------------------------------- */
+
+// POST /api/community/poll/vote - Vote on a poll post
+router.post("/poll/vote", async (req, res) => {
   try {
+    const { postId, optionIndex, userId } = req.body;
+    if (!postId || optionIndex === undefined || !userId) {
+      return res.status(400).json({ success: false, error: "postId, optionIndex, and userId are required" });
+    }
+
     if (isDbConnected()) {
-      const logs = await SupportIssue.find().sort({ createdAt: -1 });
-      return res.json({ success: true, count: logs.length, data: logs });
+      const post = await CommunityPost.findOne(getPostQuery(postId));
+      if (!post) return res.status(404).json({ success: false, error: "Community post not found" });
+
+      if (post.pollData && post.pollData.options && post.pollData.options[optionIndex]) {
+        // Prevent duplicate voting from same user session
+        post.pollData.options.forEach(opt => {
+          if (opt.voters && opt.voters.includes(userId)) {
+            opt.voters = opt.voters.filter(u => u !== userId);
+            opt.votes = Math.max(0, opt.votes - 1);
+          }
+        });
+
+        const targetOption = post.pollData.options[optionIndex];
+        if (!targetOption.voters) targetOption.voters = [];
+        targetOption.voters.push(userId);
+        targetOption.votes = (targetOption.votes || 0) + 1;
+
+        post.markModified("pollData");
+        await post.save();
+        return res.json({ success: true, data: post });
+      }
+      return res.status(400).json({ success: false, error: "Invalid poll option index" });
     } else {
-      return res.json({ success: true, count: inMemorySupportIssues.length, data: inMemorySupportIssues });
+      const post = inMemoryCommunityPosts.find(p => p._id === postId || p.postId === postId);
+      if (!post) return res.status(404).json({ success: false, error: "Community post not found" });
+
+      if (post.pollData && post.pollData.options && post.pollData.options[optionIndex]) {
+        post.pollData.options.forEach(opt => {
+          if (opt.voters && opt.voters.includes(userId)) {
+            opt.voters = opt.voters.filter(u => u !== userId);
+            opt.votes = Math.max(0, opt.votes - 1);
+          }
+        });
+
+        const targetOption = post.pollData.options[optionIndex];
+        if (!targetOption.voters) targetOption.voters = [];
+        targetOption.voters.push(userId);
+        targetOption.votes = (targetOption.votes || 0) + 1;
+
+        return res.json({ success: true, data: post });
+      }
+      return res.status(400).json({ success: false, error: "Invalid poll option index" });
+    }
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/community/report - Report an anonymous post
+router.post("/report", async (req, res) => {
+  try {
+    const { postId, reason, details, userId } = req.body;
+    if (!postId || !reason) {
+      return res.status(400).json({ success: false, error: "postId and reason are required" });
+    }
+
+    const flagMsg = `Reported by User (${reason})${details ? ': ' + details : ''}`;
+    if (isDbConnected()) {
+      const post = await CommunityPost.findOneAndUpdate(
+        getPostQuery(postId),
+        { $set: { status: 'flagged', flagReason: flagMsg } },
+        { new: true }
+      );
+      if (!post) return res.status(404).json({ success: false, error: "Community post not found" });
+      return res.json({ success: true, message: "Report submitted successfully to AI Moderation", data: post });
+    } else {
+      const post = inMemoryCommunityPosts.find(p => p._id === postId || p.postId === postId);
+      if (!post) return res.status(404).json({ success: false, error: "Community post not found" });
+      post.status = 'flagged';
+      post.flagReason = flagMsg;
+      return res.json({ success: true, message: "Report submitted successfully to AI Moderation", data: post });
     }
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

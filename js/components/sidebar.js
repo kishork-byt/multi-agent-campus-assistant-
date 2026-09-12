@@ -57,7 +57,7 @@ const SidebarComponent = {
             </div>
             <span>${currentPortal.toUpperCase()} PORTAL</span>
           </div>
-          <button class="btn-icon mobile-only" id="close-mobile-sidebar">
+          <button class="btn-icon" id="close-mobile-sidebar" title="Close Sidebar">
             <i data-lucide="x"></i>
           </button>
         </div>

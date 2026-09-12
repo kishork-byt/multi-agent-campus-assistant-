@@ -239,10 +239,14 @@ const Store = {
       id: postId,
       authorRole: user.role || 'student', // Used ONLY to render "Anonymous Student", "Anonymous Faculty", "Anonymous Admin"
       authorIdInternal: user.id, // Internal ID for session tracking - NEVER shown to users
+      anonymousHandle: postData.anonymousHandle || 'OceanSoul',
       category: postData.category || 'General',
       text: postData.text.trim(),
       mediaType: postData.mediaType || 'none',
       mediaUrl: postData.mediaUrl || '',
+      postType: postData.postType || 'text',
+      pollData: postData.pollData || null,
+      eventData: postData.eventData || null,
       timestamp: 'Just now',
       createdAt: new Date().toISOString(),
       supportCount: 0,
@@ -268,10 +272,14 @@ const Store = {
         body: JSON.stringify({
           postId: newPost.id,
           authorRole: newPost.authorRole,
+          anonymousHandle: newPost.anonymousHandle,
           category: newPost.category,
           text: newPost.text,
           mediaType: newPost.mediaType,
           mediaUrl: newPost.mediaUrl,
+          postType: newPost.postType,
+          pollData: newPost.pollData,
+          eventData: newPost.eventData,
           timestamp: newPost.timestamp,
           supportCount: 0,
           supportedBy: [],
@@ -298,6 +306,9 @@ const Store = {
     } catch (err) {
       console.warn('Backend offline. Saved community post locally to LocalStorage.', err);
     }
+
+    // Re-sync with backend to ensure client state matches server database
+    await this.syncCommunityFromBackend();
 
     if (newPost.status === 'flagged' || newPost.status === 'pending') {
       this.addNotification({
@@ -476,6 +487,68 @@ const Store = {
 
     this.addAuditLog(`Admin Moderated Anonymous Post ${postId}: ${action.toUpperCase()}`);
     this.save();
+    return true;
+  },
+
+  voteCommunityPoll: async function(postId, optionIndex) {
+    const user = Auth.getCurrentUser();
+    const userId = user.id || 'session_user';
+    const posts = this.getCommunityPosts();
+    const post = posts.find(p => p.id === postId || p._id === postId);
+
+    if (!post || !post.pollData || !post.pollData.options || !post.pollData.options[optionIndex]) {
+      return false;
+    }
+
+    // Toggle vote on option
+    post.pollData.options.forEach(opt => {
+      if (opt.voters && opt.voters.includes(userId)) {
+        opt.voters = opt.voters.filter(u => u !== userId);
+        opt.votes = Math.max(0, (opt.votes || 0) - 1);
+      }
+    });
+
+    const targetOpt = post.pollData.options[optionIndex];
+    if (!targetOpt.voters) targetOpt.voters = [];
+    targetOpt.voters.push(userId);
+    targetOpt.votes = (targetOpt.votes || 0) + 1;
+
+    this.save();
+
+    try {
+      await fetch(`${this.API_BASE}/community/poll/vote`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ postId: post.id || post._id, optionIndex, userId })
+      });
+    } catch (err) {
+      console.warn('Poll vote backend offline. Updated vote locally.', err);
+    }
+    await this.syncCommunityFromBackend();
+    return true;
+  },
+
+  reportCommunityPostWithReason: async function(postId, reason, details) {
+    const user = Auth.getCurrentUser();
+    const userId = user.id || 'session_user';
+    const posts = this.getCommunityPosts();
+    const post = posts.find(p => p.id === postId || p._id === postId);
+    if (post) {
+      post.status = 'flagged';
+      post.flagReason = `User Report (${reason})${details ? ': ' + details : ''}`;
+      this.save();
+    }
+
+    try {
+      await fetch(`${this.API_BASE}/community/report`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ postId, reason, details, userId })
+      });
+    } catch (err) {
+      console.warn('Report API offline. Flagged post locally.', err);
+    }
+    await this.syncCommunityFromBackend();
     return true;
   },
 
@@ -714,10 +787,14 @@ const Store = {
                 id: pId,
                 _id: item._id,
                 authorRole: item.authorRole || 'student',
+                anonymousHandle: item.anonymousHandle || 'OceanSoul',
                 category: item.category,
                 text: item.text,
                 mediaType: item.mediaType || 'none',
                 mediaUrl: item.mediaUrl || '',
+                postType: item.postType || (item.pollData ? 'poll' : item.eventData ? 'event' : item.mediaType !== 'none' ? item.mediaType : 'text'),
+                pollData: item.pollData || null,
+                eventData: item.eventData || null,
                 timestamp: item.timestamp || 'Recently',
                 supportCount: item.supportCount || 0,
                 supportedBy: item.supportedBy || [],
@@ -743,10 +820,14 @@ const Store = {
                 body: JSON.stringify({
                   postId: p.id,
                   authorRole: p.authorRole,
+                  anonymousHandle: p.anonymousHandle || 'OceanSoul',
                   category: p.category,
                   text: p.text,
                   mediaType: p.mediaType || 'none',
                   mediaUrl: p.mediaUrl || '',
+                  postType: p.postType || 'text',
+                  pollData: p.pollData || null,
+                  eventData: p.eventData || null,
                   timestamp: p.timestamp || 'Just now',
                   supportCount: p.supportCount || 0,
                   supportedBy: p.supportedBy || [],
