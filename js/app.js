@@ -291,6 +291,59 @@ const App = {
       }
     }
 
+    if (this.currentPortal === 'student') {
+      const studentId = Auth.getCurrentUser().id || "STU-2026-101";
+      if (this.currentRoute === 'dashboard') {
+        Store.syncStudentDashboard(studentId).then(() => this.renderCurrentView());
+      } else if (this.currentRoute === 'timetable') {
+        Store.syncStudentTimetable(studentId).then(() => this.renderCurrentView());
+      } else if (this.currentRoute === 'events') {
+        Store.syncStudentEvents(studentId).then(() => this.renderCurrentView());
+      } else if (this.currentRoute === 'notifications') {
+        Store.syncStudentNotifications(studentId).then(() => this.renderCurrentView());
+      } else if (this.currentRoute === 'profile') {
+        Store.syncStudentProfile(studentId).then(() => this.renderCurrentView());
+      } else if (this.currentRoute === 'college-info') {
+        Store.syncStudentCollegeInfo(studentId).then(() => this.renderCurrentView());
+      }
+    }
+
+    if (this.currentPortal === 'staff') {
+      const staffId = Auth.getCurrentUser().id || "STF-201";
+      if (this.currentRoute === 'dashboard') {
+        Store.syncStaffDashboard(staffId).then(() => this.renderCurrentView());
+      } else if (this.currentRoute === 'events') {
+        Store.syncStaffEvents(staffId).then(() => this.renderCurrentView());
+      } else if (this.currentRoute === 'notifications') {
+        Store.syncStaffNotifications(staffId).then(() => this.renderCurrentView());
+      } else if (this.currentRoute === 'my-tasks' || this.currentRoute === 'tasks') {
+        Store.syncStaffTasks(staffId).then(() => this.renderCurrentView());
+      } else if (this.currentRoute === 'profile') {
+        Store.syncStaffProfile(staffId).then(() => this.renderCurrentView());
+      } else if (this.currentRoute === 'college-management' || this.currentRoute === 'classes') {
+        Store.syncStaffCollegeInfo(staffId).then(() => this.renderCurrentView());
+        Store.syncStaffClasses(staffId).then(() => this.renderCurrentView());
+      }
+    }
+
+    if (this.currentPortal === 'admin') {
+      if (this.currentRoute === 'dashboard') {
+        Store.syncAdminDashboard().then(() => this.renderCurrentView());
+      } else if (this.currentRoute === 'students-management') {
+        Store.syncAdminStudents().then(() => this.renderCurrentView());
+      } else if (this.currentRoute === 'staff-management') {
+        Store.syncAdminStaff().then(() => this.renderCurrentView());
+      } else if (this.currentRoute === 'departments') {
+        Promise.all([Store.syncAdminDepartments(), Store.syncAdminCourses()]).then(() => this.renderCurrentView());
+      } else if (this.currentRoute === 'announcements') {
+        Store.syncAdminAnnouncements().then(() => this.renderCurrentView());
+      } else if (this.currentRoute === 'events-management') {
+        Store.syncAdminEvents().then(() => this.renderCurrentView());
+      } else if (this.currentRoute === 'attendance-reports') {
+        Promise.all([Store.syncAdminAttendance(), Store.syncAdminReports()]).then(() => this.renderCurrentView());
+      }
+    }
+
     if (this.currentRoute === 'community' || this.currentRoute === 'community-moderation') {
       Store.syncCommunityFromBackend().then(() => this.renderCurrentView());
     }
@@ -350,8 +403,10 @@ const App = {
 
       <!-- Modals Container -->
       ${ModalsComponent.renderAddStudentModal()}
+      ${ModalsComponent.renderEditStudentModal ? ModalsComponent.renderEditStudentModal() : ''}
       ${ModalsComponent.renderAddStaffModal()}
       ${ModalsComponent.renderEditStaffModal()}
+      ${ModalsComponent.renderAddDepartmentModal ? ModalsComponent.renderAddDepartmentModal() : ''}
       ${ModalsComponent.renderNewAnnouncementModal()}
       ${ModalsComponent.renderEditAnnouncementModal()}
       ${ModalsComponent.renderScheduleFacultyEventModal()}

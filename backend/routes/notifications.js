@@ -1,21 +1,26 @@
 const express = require("express");
 const router = express.Router();
 const Notification = require("../models/Notification");
+const mongoose = require("mongoose");
 const { isDbConnected, inMemoryNotifications } = require("../services/inMemoryStore");
+
+function getNotifQuery(id) {
+  return mongoose.Types.ObjectId.isValid(id) ? { $or: [{ _id: id }, { relatedId: id }] } : { relatedId: id };
+}
 
 // GET /api/notifications - List all notifications (optional ?role=student query)
 router.get("/", async (req, res) => {
   try {
     const roleQuery = req.query.role;
     if (isDbConnected()) {
-      const filter = {};
-      if (roleQuery) filter.role = roleQuery;
+      const filter = { dismissed: { $ne: true } };
+      if (roleQuery) filter.role = { $in: [roleQuery, "all"] };
       const list = await Notification.find(filter).sort({ createdAt: -1 });
       return res.json({ success: true, count: list.length, data: list });
     } else {
-      let list = inMemoryNotifications;
+      let list = inMemoryNotifications.filter(n => !n.dismissed);
       if (roleQuery) {
-        list = inMemoryNotifications.filter(n => n.role === roleQuery || n.role === 'all');
+        list = list.filter(n => n.role === roleQuery || n.role === 'all');
       }
       return res.json({ success: true, count: list.length, data: list });
     }
@@ -29,11 +34,11 @@ router.get("/:id", async (req, res) => {
   try {
     const idParam = req.params.id;
     if (isDbConnected()) {
-      const notif = await Notification.findById(idParam);
+      const notif = await Notification.findOne(getNotifQuery(idParam));
       if (!notif) return res.status(404).json({ success: false, error: "Notification not found" });
       return res.json({ success: true, data: notif });
     } else {
-      const notif = inMemoryNotifications.find(n => n._id === idParam || n.id === idParam);
+      const notif = inMemoryNotifications.find(n => n._id === idParam || n.id === idParam || n.relatedId === idParam);
       if (!notif) return res.status(404).json({ success: false, error: "Notification not found" });
       return res.json({ success: true, data: notif });
     }
@@ -58,6 +63,7 @@ router.post("/", async (req, res) => {
         desc: req.body.desc || "",
         time: req.body.time || "Just now",
         read: req.body.read !== undefined ? req.body.read : false,
+        dismissed: false,
         relatedId: req.body.relatedId || null,
         createdAt: new Date().toISOString()
       };
@@ -74,8 +80,8 @@ router.put("/read-all", async (req, res) => {
   try {
     const roleVal = req.body.role;
     if (isDbConnected()) {
-      const filter = {};
-      if (roleVal) filter.role = roleVal;
+      const filter = { dismissed: { $ne: true } };
+      if (roleVal) filter.role = { $in: [roleVal, "all"] };
       await Notification.updateMany(filter, { $set: { read: true } });
     } else {
       inMemoryNotifications.forEach(n => {
@@ -95,11 +101,11 @@ router.put("/:id", async (req, res) => {
   try {
     const idParam = req.params.id;
     if (isDbConnected()) {
-      const notif = await Notification.findByIdAndUpdate(idParam, req.body, { new: true });
+      const notif = await Notification.findOneAndUpdate(getNotifQuery(idParam), { $set: req.body }, { new: true });
       if (!notif) return res.status(404).json({ success: false, error: "Notification not found" });
       return res.json({ success: true, data: notif });
     } else {
-      const notif = inMemoryNotifications.find(n => n._id === idParam || n.id === idParam);
+      const notif = inMemoryNotifications.find(n => n._id === idParam || n.id === idParam || n.relatedId === idParam);
       if (!notif) return res.status(404).json({ success: false, error: "Notification not found" });
       Object.assign(notif, req.body);
       return res.json({ success: true, data: notif });
@@ -114,14 +120,15 @@ router.delete("/:id", async (req, res) => {
   try {
     const idParam = req.params.id;
     if (isDbConnected()) {
-      const notif = await Notification.findByIdAndDelete(idParam);
-      if (!notif) return res.status(404).json({ success: false, error: "Notification not found" });
-      return res.json({ success: true, message: "Notification deleted successfully" });
+      let notif = await Notification.findOneAndDelete(getNotifQuery(idParam));
+      if (!notif && mongoose.Types.ObjectId.isValid(idParam)) {
+        notif = await Notification.findByIdAndDelete(idParam);
+      }
+      return res.json({ success: true, message: "Notification dismissed successfully" });
     } else {
-      const idx = inMemoryNotifications.findIndex(n => n._id === idParam || n.id === idParam);
-      if (idx === -1) return res.status(404).json({ success: false, error: "Notification not found" });
-      inMemoryNotifications.splice(idx, 1);
-      return res.json({ success: true, message: "Notification deleted successfully" });
+      const idx = inMemoryNotifications.findIndex(n => n._id === idParam || n.id === idParam || n.relatedId === idParam);
+      if (idx !== -1) inMemoryNotifications.splice(idx, 1);
+      return res.json({ success: true, message: "Notification dismissed successfully" });
     }
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

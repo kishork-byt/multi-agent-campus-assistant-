@@ -4,9 +4,39 @@
 
 const Store = {
   STORAGE_KEY: 'COLLEGE_AI_DATA_V1',
+  API_BASE: 'http://localhost:5000/api',
 
   data: null,
   backendStatus: { connected: true, lastError: null },
+
+  fetchWithTimeout: async function(url, options = {}, timeoutMs = 8000) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      return response;
+    } catch (err) {
+      clearTimeout(timeoutId);
+      if (err.name === 'AbortError') {
+        throw new Error(`Connection timed out after ${Math.round(timeoutMs / 1000)}s. Please check if the backend server is running.`);
+      }
+      throw err;
+    }
+  },
+
+  escapeHtml: function(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  },
 
   init: function() {
     const raw = localStorage.getItem(this.STORAGE_KEY);
@@ -80,10 +110,12 @@ const Store = {
   sendAIChatMessage: async function(role, message) {
     try {
       const history = this.getAIChatHistory(role);
+      const currentUser = (typeof Auth !== 'undefined' && Auth.getCurrentUser) ? Auth.getCurrentUser() : null;
+      const userId = currentUser ? currentUser.id : null;
       const res = await fetch(`${this.API_BASE}/ai/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role, message, history })
+        body: JSON.stringify({ role, message, history, userId, studentId: userId, staffId: userId })
       });
       if (res.ok) {
         const result = await res.json();
@@ -565,6 +597,567 @@ const Store = {
   },
 
   API_BASE: 'http://localhost:5000/api',
+
+  studentCache: {
+    dashboard: null,
+    profile: null,
+    timetable: null,
+    attendance: null,
+    courses: null,
+    events: null,
+    notifications: null,
+    collegeInfo: null,
+    loading: {}
+  },
+
+  staffCache: {
+    dashboard: null,
+    profile: null,
+    classes: null,
+    tasks: null,
+    events: null,
+    notifications: null,
+    collegeInfo: null,
+    loading: {}
+  },
+
+  adminCache: {
+    dashboard: null,
+    students: null,
+    staff: null,
+    departments: null,
+    courses: null,
+    attendance: null,
+    events: null,
+    announcements: null,
+    reports: null,
+    loading: {},
+    error: {}
+  },
+
+  syncStudentDashboard: async function(studentId = "STU-2026-101") {
+    try {
+      this.studentCache.loading.dashboard = true;
+      const res = await fetch(`${this.API_BASE}/student/dashboard/${studentId}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data) {
+          this.studentCache.dashboard = json.data;
+          if (json.data.profile) {
+            this.data.student.stats.cgpa = json.data.profile.cgpa || "3.84";
+            this.data.student.stats.creditsEarned = (json.data.profile.creditsEarned || 90) + " / 120";
+          }
+          if (json.data.attendance) {
+            this.data.student.stats.attendance = json.data.attendance.percentage || "95.0%";
+          }
+          this.save();
+          return json.data;
+        }
+      }
+    } catch (e) {
+      console.warn("Student Dashboard API sync error:", e.message);
+    } finally {
+      this.studentCache.loading.dashboard = false;
+    }
+    return null;
+  },
+
+  syncStudentProfile: async function(studentId = "STU-2026-101") {
+    try {
+      this.studentCache.loading.profile = true;
+      const res = await fetch(`${this.API_BASE}/student/profile/${studentId}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data) {
+          this.studentCache.profile = json.data;
+          return json.data;
+        }
+      }
+    } catch (e) {
+      console.warn("Student Profile API sync error:", e.message);
+    } finally {
+      this.studentCache.loading.profile = false;
+    }
+    return null;
+  },
+
+  syncStudentTimetable: async function(studentId = "STU-2026-101") {
+    try {
+      this.studentCache.loading.timetable = true;
+      const res = await fetch(`${this.API_BASE}/student/timetable/${studentId}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data)) {
+          this.studentCache.timetable = json.data;
+          return json.data;
+        }
+      }
+    } catch (e) {
+      console.warn("Student Timetable API sync error:", e.message);
+    } finally {
+      this.studentCache.loading.timetable = false;
+    }
+    return null;
+  },
+
+  syncStudentAttendance: async function(studentId = "STU-2026-101") {
+    try {
+      this.studentCache.loading.attendance = true;
+      const res = await fetch(`${this.API_BASE}/student/attendance/${studentId}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success) {
+          this.studentCache.attendance = json;
+          return json;
+        }
+      }
+    } catch (e) {
+      console.warn("Student Attendance API sync error:", e.message);
+    } finally {
+      this.studentCache.loading.attendance = false;
+    }
+    return null;
+  },
+
+  syncStudentCourses: async function(studentId = "STU-2026-101") {
+    try {
+      this.studentCache.loading.courses = true;
+      const res = await fetch(`${this.API_BASE}/student/courses/${studentId}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data)) {
+          this.studentCache.courses = json.data;
+          return json.data;
+        }
+      }
+    } catch (e) {
+      console.warn("Student Courses API sync error:", e.message);
+    } finally {
+      this.studentCache.loading.courses = false;
+    }
+    return null;
+  },
+
+  syncStudentEvents: async function(studentId = "STU-2026-101") {
+    try {
+      this.studentCache.loading.events = true;
+      const res = await fetch(`${this.API_BASE}/student/events/${studentId}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data)) {
+          this.studentCache.events = json.data;
+          return json.data;
+        }
+      }
+    } catch (e) {
+      console.warn("Student Events API sync error:", e.message);
+    } finally {
+      this.studentCache.loading.events = false;
+    }
+    return null;
+  },
+
+  syncStudentNotifications: async function(studentId = "STU-2026-101") {
+    try {
+      this.studentCache.loading.notifications = true;
+      const res = await fetch(`${this.API_BASE}/student/notifications/${studentId}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data)) {
+          this.studentCache.notifications = json.data;
+          return json.data;
+        }
+      }
+    } catch (e) {
+      console.warn("Student Notifications API sync error:", e.message);
+    } finally {
+      this.studentCache.loading.notifications = false;
+    }
+    return null;
+  },
+
+  syncStudentCollegeInfo: async function(studentId = "STU-2026-101") {
+    try {
+      this.studentCache.loading.collegeInfo = true;
+      const res = await fetch(`${this.API_BASE}/student/college-info/${studentId}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data) {
+          this.studentCache.collegeInfo = json.data;
+          return json.data;
+        }
+      }
+    } catch (e) {
+      console.warn("Student College Info API sync error:", e.message);
+    } finally {
+      this.studentCache.loading.collegeInfo = false;
+    }
+    return null;
+  },
+
+  syncStaffDashboard: async function(staffId = "STF-201") {
+    try {
+      this.staffCache.loading.dashboard = true;
+      const res = await fetch(`${this.API_BASE}/staff/dashboard/${staffId}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data) {
+          this.staffCache.dashboard = json.data;
+          if (json.data.stats) {
+            this.data.staff.stats = json.data.stats;
+          }
+          if (json.data.classes) {
+            this.data.staff.classes = json.data.classes;
+          }
+          if (json.data.tasks) {
+            this.data.staff.tasks = json.data.tasks;
+          }
+          this.save();
+          return json.data;
+        }
+      }
+    } catch (e) {
+      console.warn("Staff Dashboard API sync error:", e.message);
+    } finally {
+      this.staffCache.loading.dashboard = false;
+    }
+    return null;
+  },
+
+  syncStaffProfile: async function(staffId = "STF-201") {
+    try {
+      this.staffCache.loading.profile = true;
+      const res = await fetch(`${this.API_BASE}/staff/profile/${staffId}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data) {
+          this.staffCache.profile = json.data;
+          return json.data;
+        }
+      }
+    } catch (e) {
+      console.warn("Staff Profile API sync error:", e.message);
+    } finally {
+      this.staffCache.loading.profile = false;
+    }
+    return null;
+  },
+
+  syncStaffClasses: async function(staffId = "STF-201") {
+    try {
+      this.staffCache.loading.classes = true;
+      const res = await fetch(`${this.API_BASE}/staff/classes/${staffId}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data)) {
+          this.staffCache.classes = json.data;
+          this.data.staff.classes = json.data;
+          this.save();
+          return json.data;
+        }
+      }
+    } catch (e) {
+      console.warn("Staff Classes API sync error:", e.message);
+    } finally {
+      this.staffCache.loading.classes = false;
+    }
+    return null;
+  },
+
+  syncStaffTasks: async function(staffId = "STF-201") {
+    try {
+      this.staffCache.loading.tasks = true;
+      const res = await fetch(`${this.API_BASE}/staff/tasks/${staffId}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data)) {
+          this.staffCache.tasks = json.data;
+          this.data.staff.tasks = json.data;
+          this.save();
+          return json.data;
+        }
+      }
+    } catch (e) {
+      console.warn("Staff Tasks API sync error:", e.message);
+    } finally {
+      this.staffCache.loading.tasks = false;
+    }
+    return null;
+  },
+
+  syncStaffEvents: async function(staffId = "STF-201") {
+    try {
+      this.staffCache.loading.events = true;
+      const res = await fetch(`${this.API_BASE}/staff/events/${staffId}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data)) {
+          this.staffCache.events = json.data;
+          this.data.staff.events = json.data;
+          this.save();
+          return json.data;
+        }
+      }
+    } catch (e) {
+      console.warn("Staff Events API sync error:", e.message);
+    } finally {
+      this.staffCache.loading.events = false;
+    }
+    return null;
+  },
+
+  syncStaffNotifications: async function(staffId = "STF-201") {
+    try {
+      this.staffCache.loading.notifications = true;
+      const res = await fetch(`${this.API_BASE}/staff/notifications/${staffId}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data)) {
+          this.staffCache.notifications = json.data;
+          this.data.staff.notifications = json.data;
+          this.save();
+          return json.data;
+        }
+      }
+    } catch (e) {
+      console.warn("Staff Notifications API sync error:", e.message);
+    } finally {
+      this.staffCache.loading.notifications = false;
+    }
+    return null;
+  },
+
+  syncStaffCollegeInfo: async function(staffId = "STF-201") {
+    try {
+      this.staffCache.loading.collegeInfo = true;
+      const res = await fetch(`${this.API_BASE}/staff/college-info/${staffId}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data) {
+          this.staffCache.collegeInfo = json.data;
+          return json.data;
+        }
+      }
+    } catch (e) {
+      console.warn("Staff College Info API sync error:", e.message);
+    } finally {
+      this.staffCache.loading.collegeInfo = false;
+    }
+    return null;
+  },
+
+  syncAdminDashboard: async function() {
+    this.adminCache.error.dashboard = null;
+    this.adminCache.loading.dashboard = true;
+    try {
+      const res = await this.fetchWithTimeout(`${this.API_BASE}/admin/dashboard`, {}, 8000);
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+      const json = await res.json();
+      if (json.success && json.data) {
+        this.adminCache.dashboard = json.data;
+        this.adminCache.error.dashboard = null;
+        if (json.data.stats) {
+          this.data.admin.stats.totalStudents = json.data.stats.totalStudents;
+          this.data.admin.stats.totalStaff = json.data.stats.totalStaff;
+          this.data.admin.stats.departments = json.data.stats.totalDepartments;
+        }
+        this.save();
+        return json.data;
+      } else {
+        throw new Error(json.error || "Failed to parse dashboard data from server.");
+      }
+    } catch (e) {
+      console.error("Admin Dashboard API sync error:", e.message);
+      this.adminCache.error.dashboard = e.message || "Failed to connect to backend server.";
+      return null;
+    } finally {
+      this.adminCache.loading.dashboard = false;
+    }
+  },
+
+  syncAdminStudents: async function() {
+    this.adminCache.error.students = null;
+    this.adminCache.loading.students = true;
+    try {
+      const res = await this.fetchWithTimeout(`${this.API_BASE}/admin/students`, {}, 8000);
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        this.adminCache.students = json.data;
+        this.adminCache.error.students = null;
+        return json.data;
+      } else {
+        throw new Error(json.error || "Invalid response format for students directory.");
+      }
+    } catch (e) {
+      console.error("Admin Students API sync error:", e.message);
+      this.adminCache.error.students = e.message || "Failed to load students directory.";
+      return null;
+    } finally {
+      this.adminCache.loading.students = false;
+    }
+  },
+
+  syncAdminStaff: async function() {
+    this.adminCache.error.staff = null;
+    this.adminCache.loading.staff = true;
+    try {
+      const res = await this.fetchWithTimeout(`${this.API_BASE}/admin/staff`, {}, 8000);
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        this.adminCache.staff = json.data;
+        this.adminCache.error.staff = null;
+        return json.data;
+      } else {
+        throw new Error(json.error || "Invalid response format for faculty directory.");
+      }
+    } catch (e) {
+      console.error("Admin Staff API sync error:", e.message);
+      this.adminCache.error.staff = e.message || "Failed to load faculty directory.";
+      return null;
+    } finally {
+      this.adminCache.loading.staff = false;
+    }
+  },
+
+  syncAdminDepartments: async function() {
+    this.adminCache.error.departments = null;
+    this.adminCache.loading.departments = true;
+    try {
+      const res = await this.fetchWithTimeout(`${this.API_BASE}/admin/departments`, {}, 8000);
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        this.adminCache.departments = json.data;
+        this.adminCache.error.departments = null;
+        return json.data;
+      } else {
+        throw new Error(json.error || "Invalid response format for departments.");
+      }
+    } catch (e) {
+      console.error("Admin Departments API sync error:", e.message);
+      this.adminCache.error.departments = e.message || "Failed to load departments.";
+      return null;
+    } finally {
+      this.adminCache.loading.departments = false;
+    }
+  },
+
+  syncAdminCourses: async function() {
+    this.adminCache.error.courses = null;
+    this.adminCache.loading.courses = true;
+    try {
+      const res = await this.fetchWithTimeout(`${this.API_BASE}/admin/courses`, {}, 8000);
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        this.adminCache.courses = json.data;
+        this.adminCache.error.courses = null;
+        return json.data;
+      } else {
+        throw new Error(json.error || "Invalid response format for courses catalog.");
+      }
+    } catch (e) {
+      console.error("Admin Courses API sync error:", e.message);
+      this.adminCache.error.courses = e.message || "Failed to load course catalog.";
+      return null;
+    } finally {
+      this.adminCache.loading.courses = false;
+    }
+  },
+
+  syncAdminAttendance: async function() {
+    this.adminCache.error.attendance = null;
+    this.adminCache.loading.attendance = true;
+    try {
+      const res = await this.fetchWithTimeout(`${this.API_BASE}/admin/attendance`, {}, 8000);
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+      const json = await res.json();
+      if (json.success && json.summary) {
+        this.adminCache.attendance = json;
+        this.adminCache.error.attendance = null;
+        return json;
+      } else {
+        throw new Error(json.error || "Invalid response format for attendance analytics.");
+      }
+    } catch (e) {
+      console.error("Admin Attendance API sync error:", e.message);
+      this.adminCache.error.attendance = e.message || "Failed to load attendance analytics.";
+      return null;
+    } finally {
+      this.adminCache.loading.attendance = false;
+    }
+  },
+
+  syncAdminEvents: async function() {
+    this.adminCache.error.events = null;
+    this.adminCache.loading.events = true;
+    try {
+      const res = await this.fetchWithTimeout(`${this.API_BASE}/admin/events`, {}, 8000);
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        this.adminCache.events = json.data;
+        this.adminCache.error.events = null;
+        return json.data;
+      } else {
+        throw new Error(json.error || "Invalid response format for campus events.");
+      }
+    } catch (e) {
+      console.error("Admin Events API sync error:", e.message);
+      this.adminCache.error.events = e.message || "Failed to load campus events.";
+      return null;
+    } finally {
+      this.adminCache.loading.events = false;
+    }
+  },
+
+  syncAdminAnnouncements: async function() {
+    this.adminCache.error.announcements = null;
+    this.adminCache.loading.announcements = true;
+    try {
+      const res = await this.fetchWithTimeout(`${this.API_BASE}/admin/announcements`, {}, 8000);
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        this.adminCache.announcements = json.data;
+        this.adminCache.error.announcements = null;
+        return json.data;
+      } else {
+        throw new Error(json.error || "Invalid response format for announcements.");
+      }
+    } catch (e) {
+      console.error("Admin Announcements API sync error:", e.message);
+      this.adminCache.error.announcements = e.message || "Failed to load announcements.";
+      return null;
+    } finally {
+      this.adminCache.loading.announcements = false;
+    }
+  },
+
+  syncAdminReports: async function() {
+    this.adminCache.error.reports = null;
+    this.adminCache.loading.reports = true;
+    try {
+      const res = await this.fetchWithTimeout(`${this.API_BASE}/admin/reports`, {}, 8000);
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+      const json = await res.json();
+      if (json.success && json.data) {
+        this.adminCache.reports = json.data;
+        this.adminCache.error.reports = null;
+        return json.data;
+      } else {
+        throw new Error(json.error || "Invalid response format for system reports.");
+      }
+    } catch (e) {
+      console.error("Admin Reports API sync error:", e.message);
+      this.adminCache.error.reports = e.message || "Failed to load system reports.";
+      return null;
+    } finally {
+      this.adminCache.loading.reports = false;
+    }
+  },
 
   // Sync Students List from Backend API with LocalStorage Fallback
   syncStudentsFromBackend: async function() {
@@ -1192,30 +1785,42 @@ const Store = {
     return false;
   },
 
-  addStaffEvent: function(eventData) {
+  addStaffEvent: async function(eventData) {
     const newEvent = {
-      id: "se" + Date.now(),
+      eventId: "EVT-" + Date.now(),
       title: eventData.title,
       date: eventData.date || "Sept 25, 2026",
       time: eventData.time || "10:00 AM",
       location: eventData.location || "Conference Hall A",
+      category: eventData.role || "Faculty Workshop",
       role: eventData.role || "Faculty Organiser",
-      confirmed: false
+      organizer: "Faculty Member",
+      status: "Approved",
+      rsvps: []
     };
-    this.data.staff.events.unshift(newEvent);
-    this.addAuditLog(`Scheduled Faculty Event: ${newEvent.title}`);
-    this.save();
+    try {
+      const res = await this.fetchWithTimeout(`${this.API_BASE}/events`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newEvent)
+      }, 8000);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data) {
+          if (this.staffCache.events) this.staffCache.events.unshift(json.data);
+          if (this.studentCache.events) this.studentCache.events.unshift(json.data);
+          if (this.adminCache.events) this.adminCache.events.unshift(json.data);
+          return json.data;
+        }
+      }
+    } catch (e) {
+      console.error('Failed to save staff event to MongoDB:', e.message);
+    }
     return newEvent;
   },
 
-  toggleStaffEventConfirmation: function(eventId) {
-    const event = this.data.staff.events.find(e => e.id === eventId);
-    if (event) {
-      event.confirmed = !event.confirmed;
-      this.save();
-      return event.confirmed;
-    }
-    return false;
+  toggleStaffEventConfirmation: function(eventId, userId, action) {
+    return this.toggleEventRSVP(eventId, userId, action);
   },
 
   // 4. Departments CRUD
@@ -1354,10 +1959,19 @@ const Store = {
     if (idx !== -1) {
       const removed = this.data.admin.announcements.splice(idx, 1)[0];
       this.addAuditLog(`Deleted Broadcast Announcement: ${removed.title}`);
+      
+      // Clean up corresponding local notifications
+      const targetId = removed._id || removed.id;
+      if (this.data.student && this.data.student.notifications) {
+        this.data.student.notifications = this.data.student.notifications.filter(n => n.relatedId !== removed.id && n.relatedId !== removed._id);
+      }
+      if (this.data.staff && this.data.staff.notifications) {
+        this.data.staff.notifications = this.data.staff.notifications.filter(n => n.relatedId !== removed.id && n.relatedId !== removed._id);
+      }
+
       this.save();
 
       // Async Backend API Sync
-      const targetId = removed._id || removed.id;
       fetch(`${this.API_BASE}/announcements/${targetId}`, {
         method: 'DELETE'
       }).catch(err => {
@@ -1370,7 +1984,7 @@ const Store = {
   },
 
   // 6. Tasks Kanban Actions
-  addTask: function(taskData) {
+  addTask: async function(taskData) {
     const newTask = {
       id: "t" + Date.now(),
       title: taskData.title,
@@ -1379,19 +1993,76 @@ const Store = {
       dueDate: taskData.dueDate || "Due Today",
       desc: taskData.desc || ""
     };
+    if (!this.data.staff.tasks) this.data.staff.tasks = [];
     this.data.staff.tasks.push(newTask);
     this.save();
+
+    try {
+      const currentUser = (typeof Auth !== 'undefined' && Auth.getCurrentUser) ? Auth.getCurrentUser() : null;
+      const staffId = taskData.staffId || (currentUser ? (currentUser.staffId || currentUser.id) : 'STF101');
+      const res = await fetch(`${this.API_BASE}/tasks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          staffId,
+          title: newTask.title,
+          status: newTask.status,
+          priority: newTask.priority,
+          dueDate: newTask.dueDate,
+          desc: newTask.desc
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.data) {
+          newTask._id = data.data._id;
+          if (data.data.id) newTask.id = data.data.id;
+          this.save();
+        }
+      }
+    } catch (err) {
+      console.warn('Backend task create sync offline:', err);
+    }
     return newTask;
   },
 
-  updateTaskStatus: function(taskId, newStatus) {
-    const task = this.data.staff.tasks.find(t => t.id === taskId);
+  updateTaskStatus: async function(taskId, newStatus) {
+    let task = this.data.staff.tasks.find(t => t.id === taskId || t._id === taskId);
     if (task) {
       task.status = newStatus;
       this.save();
-      return true;
     }
-    return false;
+    try {
+      const targetId = (task && task._id) ? task._id : taskId;
+      await fetch(`${this.API_BASE}/tasks/${targetId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      });
+      return true;
+    } catch (e) {
+      console.warn('Backend task status sync offline:', e);
+    }
+    return !!task;
+  },
+
+  deleteTask: async function(taskId) {
+    const idx = this.data.staff.tasks.findIndex(t => t.id === taskId || t._id === taskId);
+    let targetId = taskId;
+    if (idx !== -1) {
+      const removed = this.data.staff.tasks.splice(idx, 1)[0];
+      if (removed._id) targetId = removed._id;
+      this.save();
+    }
+    try {
+      await fetch(`${this.API_BASE}/tasks/${targetId}`, {
+        method: 'DELETE'
+      });
+      return true;
+    } catch (e) {
+      console.warn('Backend task delete sync offline:', e);
+    }
+    return idx !== -1;
   },
 
   // 7. Admin Events & Venue Approvals
@@ -1515,35 +2186,237 @@ const Store = {
     return false;
   },
 
-  toggleEventRSVP: function(eventId) {
-    const event = this.data.student.upcomingEvents.find(e => e.id === eventId);
-    if (event) {
-      event.rsvp = !event.rsvp;
-      this.save();
-      return event.rsvp;
+  toggleEventRSVP: async function(eventId, userId, action) {
+    const user = Auth.getCurrentUser();
+    const currentUserId = userId || (user ? user.id : "STF-201");
+    try {
+      const res = await this.fetchWithTimeout(`${this.API_BASE}/events/${eventId}/rsvp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: currentUserId, action: action || "toggle" })
+      }, 8000);
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+      const json = await res.json();
+      if (json.success && json.data) {
+        const updated = json.data;
+        const updateInList = (list) => {
+          if (!Array.isArray(list)) return;
+          const idx = list.findIndex(e => (e._id === eventId || e.eventId === eventId || e.id === eventId));
+          if (idx !== -1) list[idx] = updated;
+        };
+        if (this.staffCache && this.staffCache.events) updateInList(this.staffCache.events);
+        if (this.studentCache && this.studentCache.events) updateInList(this.studentCache.events);
+        if (this.adminCache && this.adminCache.events) updateInList(this.adminCache.events);
+        return updated;
+      } else {
+        throw new Error(json.error || "Failed to update RSVP");
+      }
+    } catch (e) {
+      console.error("Failed to update event RSVP:", e.message);
+      throw e;
     }
-    return false;
   },
 
   // 8. Notifications
-  markAllNotificationsRead: function(role) {
+  markAllNotificationsRead: async function(role) {
     if (role === 'student') {
-      this.data.student.notifications.forEach(n => n.read = true);
+      if (this.data.student && this.data.student.notifications) {
+        this.data.student.notifications.forEach(n => n.read = true);
+      }
     } else if (role === 'staff') {
-      this.data.staff.notifications.forEach(n => n.read = true);
+      if (this.data.staff && this.data.staff.notifications) {
+        this.data.staff.notifications.forEach(n => n.read = true);
+      }
     }
     this.save();
+    try {
+      const currentUser = (typeof Auth !== 'undefined' && Auth.getCurrentUser) ? Auth.getCurrentUser() : null;
+      const userId = currentUser ? (currentUser.studentId || currentUser.staffId || currentUser.id) : null;
+      await fetch(`${this.API_BASE}/notifications/read-all`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role, userId })
+      });
+    } catch (e) {
+      console.warn('Mark all read sync offline:', e);
+    }
   },
 
-  dismissNotification: function(role, notifId) {
+  dismissNotification: async function(role, notifId) {
     if (role === 'student') {
-      const idx = this.data.student.notifications.findIndex(n => n.id === notifId);
-      if (idx !== -1) this.data.student.notifications.splice(idx, 1);
+      if (this.data.student && this.data.student.notifications) {
+        const idx = this.data.student.notifications.findIndex(n => n.id === notifId || n._id === notifId);
+        if (idx !== -1) this.data.student.notifications.splice(idx, 1);
+      }
     } else if (role === 'staff') {
-      const idx = this.data.staff.notifications.findIndex(n => n.id === notifId);
-      if (idx !== -1) this.data.staff.notifications.splice(idx, 1);
+      if (this.data.staff && this.data.staff.notifications) {
+        const idx = this.data.staff.notifications.findIndex(n => n.id === notifId || n._id === notifId);
+        if (idx !== -1) this.data.staff.notifications.splice(idx, 1);
+      }
     }
     this.save();
+
+    try {
+      const currentUser = (typeof Auth !== 'undefined' && Auth.getCurrentUser) ? Auth.getCurrentUser() : null;
+      const userId = currentUser ? (currentUser.studentId || currentUser.staffId || currentUser.id) : null;
+      await fetch(`${this.API_BASE}/notifications/${notifId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, role })
+      });
+    } catch (e) {
+      console.warn('Backend notification dismissal sync offline:', e);
+    }
+  },
+
+  // Profile & User & Department Sync Actions
+  updateStaffProfile: async function(staffId, updateData) {
+    if (!this.data.staff) this.data.staff = {};
+    if (!this.data.staff.profile) this.data.staff.profile = {};
+    Object.assign(this.data.staff.profile, updateData);
+    this.save();
+
+    try {
+      const targetId = staffId || (typeof Auth !== 'undefined' && Auth.getCurrentUser() ? Auth.getCurrentUser().id : 'STF101');
+      const res = await fetch(`${this.API_BASE}/staff/profile/${targetId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updateData)
+      });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (e) {
+      console.warn('Staff profile update API error:', e);
+    }
+    return { success: true, data: this.data.staff.profile };
+  },
+
+  updateStudent: async function(studentId, updateData) {
+    const student = (this.data.admin.studentsList || []).find(s => s.id === studentId || s._id === studentId || s.studentId === studentId);
+    if (student) {
+      Object.assign(student, updateData);
+      this.save();
+    }
+    try {
+      const targetId = (student && student._id) ? student._id : studentId;
+      const res = await fetch(`${this.API_BASE}/students/${targetId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updateData)
+      });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (e) {
+      console.warn('Student update API error:', e);
+    }
+    return { success: true };
+  },
+
+  updateStaff: async function(staffId, updateData) {
+    const staff = (this.data.admin.staffList || []).find(s => s.id === staffId || s._id === staffId || s.staffId === staffId);
+    if (staff) {
+      Object.assign(staff, updateData);
+      this.save();
+    }
+    try {
+      const targetId = (staff && staff._id) ? staff._id : staffId;
+      const res = await fetch(`${this.API_BASE}/faculty/${targetId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updateData)
+      });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (e) {
+      console.warn('Staff update API error:', e);
+    }
+    return { success: true };
+  },
+
+  addDepartment: async function(deptData) {
+    const code = (deptData.code || '').trim().toUpperCase();
+    const newDept = {
+      id: code.toLowerCase(),
+      code: code,
+      name: deptData.name,
+      hod: deptData.hod || 'Unassigned',
+      facultyCount: Number(deptData.facultyCount) || 0,
+      studentsCount: Number(deptData.studentsCount) || 0,
+      coursesCount: Number(deptData.coursesCount) || 0
+    };
+    if (!this.data.admin.departmentsList) this.data.admin.departmentsList = [];
+    
+    // Check local duplicate
+    const exists = this.data.admin.departmentsList.some(d => d.code === code);
+    if (exists) {
+      return { success: false, error: `Department code ${code} already exists.` };
+    }
+
+    this.data.admin.departmentsList.push(newDept);
+    this.save();
+
+    try {
+      const res = await fetch(`${this.API_BASE}/admin/departments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newDept)
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        const idx = this.data.admin.departmentsList.findIndex(d => d.code === code);
+        if (idx !== -1) this.data.admin.departmentsList.splice(idx, 1);
+        this.save();
+        return { success: false, error: data.error || 'Failed to add department' };
+      }
+      newDept._id = data.data._id;
+      this.save();
+      return { success: true, data: newDept };
+    } catch (e) {
+      console.warn('Add department API error:', e);
+      return { success: true, data: newDept };
+    }
+  },
+
+  updateDepartment: async function(deptId, updateData) {
+    const dept = (this.data.admin.departmentsList || []).find(d => d.id === deptId || d._id === deptId || d.code === deptId);
+    if (dept) {
+      Object.assign(dept, updateData);
+      this.save();
+    }
+    try {
+      const targetId = (dept && dept._id) ? dept._id : deptId;
+      const res = await fetch(`${this.API_BASE}/admin/departments/${targetId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updateData)
+      });
+      if (res.ok) return await res.json();
+    } catch (e) {
+      console.warn('Update department API error:', e);
+    }
+    return { success: true };
+  },
+
+  deleteDepartment: async function(deptId) {
+    const idx = (this.data.admin.departmentsList || []).findIndex(d => d.id === deptId || d._id === deptId || d.code === deptId);
+    let targetId = deptId;
+    if (idx !== -1) {
+      const removed = this.data.admin.departmentsList.splice(idx, 1)[0];
+      if (removed._id) targetId = removed._id;
+      this.save();
+    }
+    try {
+      await fetch(`${this.API_BASE}/admin/departments/${targetId}`, {
+        method: 'DELETE'
+      });
+      return { success: true };
+    } catch (e) {
+      console.warn('Delete department API error:', e);
+    }
+    return { success: true };
   },
 
   // 9. AI Conversation Memory

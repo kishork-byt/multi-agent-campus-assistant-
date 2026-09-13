@@ -14,6 +14,7 @@ const eventSchema = new mongoose.Schema(
     venue: { type: String, default: "" },
     status: { type: String, enum: ["Approved", "Pending Approval", "Rejected"], default: "Approved" },
     role: { type: String, default: "Attendee" },
+    rsvps: [{ type: String }],
     rsvpCount: { type: Number, default: 0 }
   },
   { timestamps: true }

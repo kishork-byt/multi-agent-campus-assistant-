@@ -91,19 +91,32 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-// DELETE /api/announcements/:id - Delete announcement
+// DELETE /api/announcements/:id - Delete announcement & associated broadcast notifications
 router.delete("/:id", async (req, res) => {
   try {
     const idParam = req.params.id;
+    const Notification = require("../models/Notification");
+    const { inMemoryNotifications } = require("../services/inMemoryStore");
+
     if (isDbConnected()) {
       const item = await Announcement.findOneAndDelete(getAnnouncementQuery(idParam));
       if (!item) return res.status(404).json({ success: false, error: "Announcement not found" });
-      return res.json({ success: true, message: "Announcement deleted successfully" });
+      
+      const targetId = item.announcementId || (item._id ? item._id.toString() : idParam);
+      await Notification.deleteMany({ $or: [{ relatedId: targetId }, { title: item.title }] });
+
+      return res.json({ success: true, message: "Announcement and associated broadcast notifications removed successfully" });
     } else {
       const idx = inMemoryAnnouncements.findIndex(a => a._id === idParam || a.announcementId === idParam);
       if (idx === -1) return res.status(404).json({ success: false, error: "Announcement not found" });
-      inMemoryAnnouncements.splice(idx, 1);
-      return res.json({ success: true, message: "Announcement deleted successfully" });
+      const removed = inMemoryAnnouncements.splice(idx, 1)[0];
+      const targetId = removed.announcementId || removed._id;
+      for (let i = inMemoryNotifications.length - 1; i >= 0; i--) {
+        if (inMemoryNotifications[i].relatedId === targetId || inMemoryNotifications[i].title === removed.title) {
+          inMemoryNotifications.splice(i, 1);
+        }
+      }
+      return res.json({ success: true, message: "Announcement and associated broadcast notifications removed successfully" });
     }
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

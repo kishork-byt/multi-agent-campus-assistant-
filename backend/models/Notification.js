@@ -8,6 +8,8 @@ const notificationSchema = new mongoose.Schema(
     desc: { type: String, required: true },
     time: { type: String, default: "Just now" },
     read: { type: Boolean, default: false },
+    dismissed: { type: Boolean, default: false },
+    dismissedBy: [{ type: String }],
     relatedId: { type: String }
   },
   { timestamps: true }

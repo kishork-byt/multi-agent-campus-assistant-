@@ -1,14 +1,15 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const path = require("path");
 require("dotenv").config({ path: path.join(__dirname, "../.env") });
+const AiContextService = require("./aiContextService");
 
 const AiService = {
   /**
    * Role-specific system instructions for the AI Assistant.
    */
   systemInstructions: {
-    staff: `You are the official Faculty & Staff AI Assistant for a modern university portal. You assist professors, instructors, and university staff with course development, syllabus design, assignment creation, grading rubrics, student communications, research support, teaching support, quiz generation, lab work guidance, and academic explanations. Provide clear, well-structured, professional, and directly relevant answers. If asked for specific private campus data or student records that are not provided in context, clearly state that internal university databases are not connected rather than inventing fake data.`,
-    student: `You are the official Student AI Assistant for a modern university portal. You assist students with course topics, concepts, study strategies, lab assignments, and academic questions. Provide clear, encouraging, educational, and easy-to-understand explanations.`,
+    staff: `You are the official Faculty & Staff AI Assistant for a modern university portal. You assist professors, instructors, and university staff with course development, syllabus design, assignment creation, grading rubrics, student communications, research support, teaching support, quiz generation, lab work guidance, and academic explanations. Provide clear, well-structured, professional, and directly relevant answers.`,
+    student: `You are the official Student AI Assistant for a modern university portal. You assist students with course topics, concepts, study strategies, lab assignments, academic questions, schedule, timetable, courses, and attendance. Provide clear, encouraging, educational, and easy-to-understand explanations.`,
     admin: `You are the official University Admin AI Copilot. You assist university administrators with departmental management, policy formulation, faculty analytics, campus operations, and academic governance. Provide concise, professional, data-informed insights.`
   },
 
@@ -70,10 +71,11 @@ const AiService = {
    * @param {Object} options
    * @param {string} options.message User prompt message
    * @param {string} options.role Role context ('staff' | 'student' | 'admin')
+   * @param {string} [options.userId] User ID (studentId or staffId)
    * @param {Array} options.history Conversation history
    * @returns {Promise<string>} AI generated response text
    */
-  generateResponse: async function({ message, role = 'staff', history = [] }) {
+  generateResponse: async function({ message, role = 'staff', userId = null, history = [] }) {
     const prompt = (message || '').trim();
     if (!prompt) {
       return "Please enter a question or prompt for the AI Assistant.";
@@ -87,12 +89,24 @@ const AiService = {
     }
 
     const roleKey = (role && this.systemInstructions[role]) ? role : 'staff';
-    const sysInstruction = this.systemInstructions[roleKey];
+    let sysInstruction = this.systemInstructions[roleKey];
+
+    // Fetch dynamic MongoDB context
+    let dynamicContext = "";
+    if (roleKey === 'student') {
+      dynamicContext = await AiContextService.getStudentContext(userId);
+    } else if (roleKey === 'staff') {
+      dynamicContext = await AiContextService.getStaffContext(userId);
+    }
+
+    if (dynamicContext) {
+      sysInstruction += `\n\nREAL-TIME MONGODB ACADEMIC CONTEXT:\n${dynamicContext}\n\nINSTRUCTIONS FOR USING CONTEXT:\n- Use the real-time MongoDB context above to directly answer any student or staff questions regarding schedule, timetable, next class, enrolled/assigned courses, attendance, instructors, tasks, or events.\n- For "What is my next class?", answer using the "DETERMINED NEXT UPCOMING CLASS" or timetable schedule in the context above.\n- For general or academic conceptual questions (e.g., "Explain machine learning"), answer normally and clearly without forcing context details where not relevant.`;
+    }
 
     // Format and sanitize chat history into Gemini format
     const formattedHistory = this.sanitizeGeminiHistory(history, prompt);
 
-    const modelsToTry = ["gemini-2.5-flash", "gemini-3.5-flash", "gemini-3.6-flash", "gemini-3.1-flash-lite", "gemini-2.0-flash"];
+    const modelsToTry = ["gemini-3.6-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"];
     let lastError = null;
 
     const genAI = new GoogleGenerativeAI(apiKey);

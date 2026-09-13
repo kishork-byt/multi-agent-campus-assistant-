@@ -25,17 +25,19 @@ let dbStatus = {
 
 if (uri) {
   mongoose.connect(uri, { serverSelectionTimeoutMS: 3000 })
-    .then(() => {
+    .then(async () => {
       console.log("Successfully connected to MongoDB Atlas via Mongoose!");
       dbStatus = {
         connected: true,
         message: "Successfully connected to MongoDB Atlas"
       };
+      await checkAndAutoSeed();
     })
     .catch(async (err) => {
       console.error("MongoDB Atlas connection failed:", err.message);
       try {
         console.log("Initializing in-memory MongoDB database fallback...");
+        await mongoose.disconnect();
         const { MongoMemoryServer } = require("mongodb-memory-server");
         const mongod = await MongoMemoryServer.create();
         const memUri = mongod.getUri();
@@ -45,6 +47,7 @@ if (uri) {
           connected: true,
           message: "Successfully connected to in-memory MongoDB database"
         };
+        await checkAndAutoSeed();
       } catch (memErr) {
         console.error("In-memory MongoDB fallback failed:", memErr.message);
         dbStatus = {
@@ -53,6 +56,21 @@ if (uri) {
         };
       }
     });
+
+async function checkAndAutoSeed() {
+  try {
+    const Department = require("./models/Department");
+    const count = await Department.countDocuments();
+    if (count === 0) {
+      console.log("Database empty on start. Running initial database seeder...");
+      const seedDatabase = require("./seedDatabase");
+      // Seed directly on current connection
+      await seedDatabase();
+    }
+  } catch (e) {
+    console.error("Auto-seed check failed:", e.message);
+  }
+}
 } else {
   dbStatus = {
     connected: false,
@@ -72,6 +90,25 @@ app.use("/api/tasks", require("./routes/tasks"));
 app.use("/api/notifications", require("./routes/notifications"));
 app.use("/api/community", require("./routes/community"));
 app.use("/api/ai", require("./routes/ai"));
+
+// Data-Driven College Management Portal APIs
+app.use("/api/student", require("./routes/studentPortal"));
+app.use("/api/staff", require("./routes/staffPortal"));
+app.use("/api/admin", require("./routes/adminPortal"));
+
+// API 404 Fallback Middleware
+app.use((req, res, next) => {
+  if (req.path.startsWith("/api/")) {
+    return res.status(404).json({ success: false, error: "API endpoint not found" });
+  }
+  next();
+});
+
+// Global Error Handler
+app.use((err, req, res, next) => {
+  console.error("Unhandled Server Error:", err.stack || err.message);
+  res.status(500).json({ success: false, error: "Internal server error" });
+});
 
 // Root Health Endpoint
 app.get("/", (req, res) => {

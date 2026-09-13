@@ -57,6 +57,120 @@ const ModalsComponent = {
     `;
   },
 
+  renderEditStudentModal: function() {
+    return `
+      <div class="modal-overlay" id="modal-edit-student">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3 class="card-title"><i data-lucide="user-check"></i> Edit Student Record</h3>
+            <button class="btn-icon" onclick="ModalsComponent.closeModal('modal-edit-student')">
+              <i data-lucide="x"></i>
+            </button>
+          </div>
+          <div class="modal-body">
+            <form id="form-edit-student" onsubmit="event.preventDefault(); ModalsComponent.handleEditStudentSubmit();">
+              <input type="hidden" id="edit-student-id">
+              <div class="form-group">
+                <label class="form-label">Full Name</label>
+                <input type="text" id="edit-student-name" class="input-field" placeholder="e.g. Jordan Smith" required>
+              </div>
+              <div class="grid-cols-2">
+                <div class="form-group">
+                  <label class="form-label">Department</label>
+                  <select id="edit-student-dept" class="input-field select-field">
+                    <option>Computer Science & Engineering</option>
+                    <option>Data Science & AI</option>
+                    <option>Electrical Eng.</option>
+                    <option>Biotechnology</option>
+                    <option>Mechanical Eng.</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Academic Year</label>
+                  <select id="edit-student-year" class="input-field select-field">
+                    <option>Freshman</option>
+                    <option>Sophomore</option>
+                    <option>Junior</option>
+                    <option>Senior</option>
+                  </select>
+                </div>
+              </div>
+              <div class="grid-cols-2">
+                <div class="form-group">
+                  <label class="form-label">Student Email</label>
+                  <input type="email" id="edit-student-email" class="input-field" placeholder="jordan@university.edu" required>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">CGPA Score</label>
+                  <input type="number" id="edit-student-gpa" class="input-field" step="0.01" min="0" max="4.0" placeholder="e.g. 3.85" required>
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Attendance Rate (%)</label>
+                <input type="number" id="edit-student-attendance" class="input-field" min="0" max="100" placeholder="e.g. 94" required>
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="ModalsComponent.closeModal('modal-edit-student')">Cancel</button>
+            <button class="btn btn-primary" onclick="document.getElementById('form-edit-student').requestSubmit()">Save Student Record</button>
+          </div>
+        </div>
+      </div>
+    `;
+  },
+
+  renderAddDepartmentModal: function() {
+    return `
+      <div class="modal-overlay" id="modal-add-department">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3 class="card-title"><i data-lucide="building"></i> Add Academic Department</h3>
+            <button class="btn-icon" onclick="ModalsComponent.closeModal('modal-add-department')">
+              <i data-lucide="x"></i>
+            </button>
+          </div>
+          <div class="modal-body">
+            <form id="form-add-department" onsubmit="event.preventDefault(); ModalsComponent.handleDepartmentSubmit();">
+              <div class="grid-cols-2">
+                <div class="form-group">
+                  <label class="form-label">Department Code</label>
+                  <input type="text" id="new-dept-code" class="input-field" placeholder="e.g. CSE, ECE, AI" required style="text-transform: uppercase;">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Department Name</label>
+                  <input type="text" id="new-dept-name" class="input-field" placeholder="e.g. Computer Science & Engineering" required>
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Head of Department (HOD)</label>
+                <input type="text" id="new-dept-hod" class="input-field" placeholder="e.g. Dr. Sarah Jenkins" required>
+              </div>
+              <div class="grid-cols-3">
+                <div class="form-group">
+                  <label class="form-label">Faculty Count</label>
+                  <input type="number" id="new-dept-faculty" class="input-field" min="0" value="12" required>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Students Count</label>
+                  <input type="number" id="new-dept-students" class="input-field" min="0" value="450" required>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Courses Count</label>
+                  <input type="number" id="new-dept-courses" class="input-field" min="0" value="18" required>
+                </div>
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="ModalsComponent.closeModal('modal-add-department')">Cancel</button>
+            <button class="btn btn-primary" onclick="document.getElementById('form-add-department').requestSubmit()">Create Department</button>
+          </div>
+        </div>
+      </div>
+    `;
+  },
+
   renderAddStaffModal: function() {
     return `
       <div class="modal-overlay" id="modal-add-staff">
@@ -717,6 +831,99 @@ const ModalsComponent = {
     App.renderCurrentView();
   },
 
+  openEditStudentModal: function(studentId) {
+    const student = (Store.getStudentsList() || []).find(s => s.id === studentId || s._id === studentId || s.studentId === studentId);
+    if (!student) return;
+
+    const idEl = document.getElementById('edit-student-id');
+    const nameEl = document.getElementById('edit-student-name');
+    const deptEl = document.getElementById('edit-student-dept');
+    const yearEl = document.getElementById('edit-student-year');
+    const emailEl = document.getElementById('edit-student-email');
+    const gpaEl = document.getElementById('edit-student-gpa');
+    const attEl = document.getElementById('edit-student-attendance');
+
+    if (idEl) idEl.value = student.id || student._id || studentId;
+    if (nameEl) nameEl.value = student.name || '';
+    if (deptEl) deptEl.value = student.dept || 'Computer Science & Engineering';
+    if (yearEl) yearEl.value = student.year || 'Junior';
+    if (emailEl) emailEl.value = student.email || '';
+    if (gpaEl) gpaEl.value = student.gpa !== undefined ? student.gpa : (student.cgpa || 3.8);
+    if (attEl) attEl.value = student.attendance !== undefined ? student.attendance : 90;
+
+    this.openModal('modal-edit-student');
+  },
+
+  handleEditStudentSubmit: async function() {
+    const idEl = document.getElementById('edit-student-id');
+    const nameEl = document.getElementById('edit-student-name');
+    const deptEl = document.getElementById('edit-student-dept');
+    const yearEl = document.getElementById('edit-student-year');
+    const emailEl = document.getElementById('edit-student-email');
+    const gpaEl = document.getElementById('edit-student-gpa');
+    const attEl = document.getElementById('edit-student-attendance');
+
+    if (!idEl || !nameEl || !nameEl.value.trim()) {
+      alert('Please enter student name');
+      return;
+    }
+
+    const studentId = idEl.value;
+    await Store.updateStudent(studentId, {
+      name: nameEl.value.trim(),
+      dept: deptEl.value,
+      year: yearEl.value,
+      email: emailEl.value.trim(),
+      gpa: parseFloat(gpaEl.value) || 3.5,
+      cgpa: parseFloat(gpaEl.value) || 3.5,
+      attendance: parseInt(attEl.value) || 90
+    });
+
+    this.closeModal('modal-edit-student');
+    if (window.App && App.showToast) App.showToast('Student record updated successfully!', 'success');
+    App.renderCurrentView();
+  },
+
+  openAddDepartmentModal: function() {
+    this.openModal('modal-add-department');
+  },
+
+  handleDepartmentSubmit: async function() {
+    const codeEl = document.getElementById('new-dept-code');
+    const nameEl = document.getElementById('new-dept-name');
+    const hodEl = document.getElementById('new-dept-hod');
+    const facEl = document.getElementById('new-dept-faculty');
+    const stuEl = document.getElementById('new-dept-students');
+    const crsEl = document.getElementById('new-dept-courses');
+
+    if (!codeEl || !codeEl.value.trim() || !nameEl || !nameEl.value.trim()) {
+      alert('Please fill out department code and name');
+      return;
+    }
+
+    const res = await Store.addDepartment({
+      code: codeEl.value.trim().toUpperCase(),
+      name: nameEl.value.trim(),
+      hod: hodEl ? hodEl.value.trim() : 'Unassigned',
+      facultyCount: parseInt(facEl.value) || 0,
+      studentsCount: parseInt(stuEl.value) || 0,
+      coursesCount: parseInt(crsEl.value) || 0
+    });
+
+    if (!res.success) {
+      alert(res.error || 'Failed to create department');
+      return;
+    }
+
+    codeEl.value = '';
+    nameEl.value = '';
+    if (hodEl) hodEl.value = '';
+
+    this.closeModal('modal-add-department');
+    if (window.App && App.showToast) App.showToast('Department added successfully!', 'success');
+    App.renderCurrentView();
+  },
+
   openEditStaffModal: function(staffId) {
     const staff = Store.getStaffList().find(s => s.id === staffId || s._id === staffId);
     if (!staff) return;
@@ -865,18 +1072,36 @@ const ModalsComponent = {
       return;
     }
 
-    const newEvent = Store.addStaffEvent({
-      title: titleEl.value.trim(),
-      date: dateEl.value.trim(),
-      time: timeEl.value.trim(),
-      location: locEl.value.trim(),
-      role: roleEl.value
-    });
+    const submitBtn = document.querySelector('#modal-add-faculty-event .modal-footer .btn-primary');
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Scheduling...';
+    }
 
-    titleEl.value = '';
+    try {
+      await Store.addStaffEvent({
+        title: titleEl.value.trim(),
+        date: dateEl.value ? dateEl.value.trim() : 'Upcoming',
+        time: timeEl.value ? timeEl.value.trim() : '10:00 AM',
+        location: locEl.value ? locEl.value.trim() : 'Conference Room A',
+        role: roleEl ? roleEl.value : 'Faculty Organiser'
+      });
 
-    this.closeModal('modal-add-faculty-event');
-    App.renderCurrentView();
+      titleEl.value = '';
+      if (dateEl) dateEl.value = '';
+      if (timeEl) timeEl.value = '';
+      if (locEl) locEl.value = '';
+
+      this.closeModal('modal-add-faculty-event');
+      App.renderCurrentView();
+    } catch (e) {
+      alert('Failed to schedule event: ' + e.message);
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Schedule Event';
+      }
+    }
   },
 
   handleVenueReserveSubmit: function() {
@@ -957,21 +1182,40 @@ const ModalsComponent = {
   },
 
   showEventDetails: function(eventId) {
-    const approvals = Store.getEventsApprovals();
-    const event = approvals.find(e => e.id === eventId);
+    let event = null;
+    if (Store.staffCache && Store.staffCache.events) {
+      event = Store.staffCache.events.find(e => (e._id === eventId || e.eventId === eventId || e.id === eventId));
+    }
+    if (!event && Store.studentCache && Store.studentCache.events) {
+      event = Store.studentCache.events.find(e => (e._id === eventId || e.eventId === eventId || e.id === eventId));
+    }
+    if (!event && Store.adminCache && Store.adminCache.events) {
+      event = Store.adminCache.events.find(e => (e._id === eventId || e.eventId === eventId || e.id === eventId));
+    }
+    if (!event) {
+      const approvals = Store.getEventsApprovals();
+      event = approvals.find(e => (e.id === eventId || e._id === eventId));
+    }
     if (!event) return;
+
+    const rsvps = Array.isArray(event.rsvps) ? event.rsvps : [];
+    const rsvpCount = event.rsvpCount !== undefined ? event.rsvpCount : rsvps.length;
 
     const body = document.getElementById('modal-event-details-body');
     if (body) {
       body.innerHTML = `
         <div style="padding: 0.5rem 0;">
-          <span class="badge badge-${event.status === 'Approved' ? 'staff' : 'admin'}" style="margin-bottom: 0.75rem;">${event.status}</span>
-          <h2 style="font-size: 1.4rem; font-weight: 800; margin-bottom: 0.75rem;">${event.title}</h2>
-          <div style="display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.9rem; color: var(--text-muted);">
-            <span><strong>Organizer:</strong> ${event.organizer}</span>
-            <span><strong>Requested Venue:</strong> ${event.venue}</span>
-            <span><strong>Event Date:</strong> ${event.date}</span>
-            <span><strong>Description / Notes:</strong> ${event.details || 'Campus venue reservation request.'}</span>
+          <span class="badge badge-staff" style="margin-bottom: 0.75rem;">${event.category || event.tag || event.status || 'Approved'}</span>
+          <h2 style="font-size: 1.4rem; font-weight: 800; margin-bottom: 0.75rem;">${Store.escapeHtml ? Store.escapeHtml(event.title) : event.title}</h2>
+          <div style="display: flex; flex-direction: column; gap: 0.6rem; font-size: 0.92rem; color: var(--text-muted);">
+            <span><strong>Date & Time:</strong> ${event.date || 'Upcoming'} ${event.time ? '• ' + event.time : ''}</span>
+            <span><strong>Location / Venue:</strong> ${event.location || event.venue || 'Campus Auditorium'}</span>
+            <span><strong>Organizer:</strong> ${event.organizer || 'Faculty / Department'}</span>
+            <span><strong>Registered Attendees:</strong> <strong>${rsvpCount}</strong> Users</span>
+            <div style="margin-top: 0.5rem; padding-top: 0.75rem; border-top: 1px solid var(--border-color); color: var(--text-color, #e2e8f0);">
+              <strong>Event Description:</strong><br>
+              <p style="margin-top: 0.35rem; line-height: 1.5; color: var(--text-muted);">${Store.escapeHtml ? Store.escapeHtml(event.desc || event.details || event.description || 'Campus academic event.') : (event.desc || event.details || 'Campus academic event.')}</p>
+            </div>
           </div>
         </div>
       `;
