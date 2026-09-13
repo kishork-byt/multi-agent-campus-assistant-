@@ -559,36 +559,54 @@ class BaseCampusAgent {
     // 2. Genuine Strands Agent Invocation Loop (Model-Driven Reasoning & Tool Selection)
     // The real LLM (BedrockModel / GoogleModel) inspects message and autonomously selects tools
     let answerText = "";
-    try {
-      const invokeResult = await this.strandsAgent.invoke(message, {
-        invocationState: {
-          userId: effectiveUserId,
-          userRole,
-          conversationId: effectiveConvId
-        }
-      });
+    let invokeResult = null;
+    const maxRetries = 2;
 
-      if (invokeResult?.lastMessage?.content) {
-        answerText = invokeResult.lastMessage.content
-          .map(c => c.text || "")
-          .filter(Boolean)
-          .join("\n")
-          .trim();
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        invokeResult = await this.strandsAgent.invoke(message, {
+          invocationState: {
+            userId: effectiveUserId,
+            userRole,
+            conversationId: effectiveConvId
+          }
+        });
+        break;
+      } catch (err) {
+        const isRateLimit = err.message && (err.message.includes("429") || err.message.includes("RESOURCE_EXHAUSTED") || err.message.includes("Quota exceeded"));
+        if (isRateLimit && attempt < maxRetries) {
+          let waitMs = 8000;
+          const match = err.message.match(/retry in ([0-9.]+)s/i) || err.message.match(/"retryDelay":\s*"([0-9]+)s"/i);
+          if (match && match[1]) {
+            waitMs = Math.ceil(parseFloat(match[1]) * 1000) + 1000;
+          }
+          console.log(`[${this.name}Agent] Rate limited (429). Retrying in ${Math.round(waitMs / 1000)}s... (attempt ${attempt + 1}/${maxRetries})`);
+          await new Promise(resolve => setTimeout(resolve, waitMs));
+          continue;
+        }
+
+        console.warn(`[${this.name}Agent] Strands invoke error:`, err.message);
+        return {
+          success: false,
+          agent: this.name,
+          agentRole: this.title,
+          status: "MODEL_UNAVAILABLE",
+          executionId,
+          error: `Model Provider (${this.modelProviderInfo?.provider || 'LLM'}) Error: ${err.message}. Please check API credentials and network.`,
+          message: `The AI Model Provider is currently unreachable or encountered an inference error: ${err.message}.`,
+          answer: `The AI Model Provider is currently unreachable or encountered an inference error: ${err.message}.`,
+          toolsUsed: this.currentTurnTools,
+          cards: []
+        };
       }
-    } catch (err) {
-      console.warn(`[${this.name}Agent] Strands invoke error:`, err.message);
-      return {
-        success: false,
-        agent: this.name,
-        agentRole: this.title,
-        status: "MODEL_UNAVAILABLE",
-        executionId,
-        error: `Model Provider (${this.modelProviderInfo?.provider || 'LLM'}) Error: ${err.message}. Please check API credentials and network.`,
-        message: `The AI Model Provider is currently unreachable or encountered an inference error: ${err.message}.`,
-        answer: `The AI Model Provider is currently unreachable or encountered an inference error: ${err.message}.`,
-        toolsUsed: this.currentTurnTools,
-        cards: []
-      };
+    }
+
+    if (invokeResult?.lastMessage?.content) {
+      answerText = invokeResult.lastMessage.content
+        .map(c => c.text || "")
+        .filter(Boolean)
+        .join("\n")
+        .trim();
     }
 
     // 5. Check if a tool requested human approval during invocation

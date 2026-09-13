@@ -229,7 +229,7 @@ Edit `backend/.env` with your settings:
 MONGODB_URI=mongodb://localhost:27017/campus-assistant
 PORT=5000
 AI_PROVIDER=gemini
-GEMINI_MODEL=gemini-2.5-flash
+GEMINI_MODEL=gemini-3.6-flash
 GEMINI_API_KEY=
 ```
 *(Note: If `MONGODB_URI` is omitted or unavailable, the backend automatically spins up an in-memory MongoDB fallback for testing).*
@@ -255,7 +255,7 @@ http://localhost:5000
 | `PORT` | Optional | `5000` | HTTP port for Express backend server |
 | `MONGODB_URI` | Optional | Local memory | MongoDB connection string (Atlas or local) |
 | `AI_PROVIDER` | Required | `gemini` | Active AI provider (`gemini` or `bedrock`) |
-| `GEMINI_MODEL` | Optional | `gemini-2.5-flash` | Gemini model ID for GoogleModel |
+| `GEMINI_MODEL` | Optional | `gemini-3.6-flash` | Gemini model ID for GoogleModel |
 | `GEMINI_API_KEY` | Conditional | Empty | Google Gemini API key (required for cloud inference) |
 | `AWS_REGION` | Optional | `us-east-1` | AWS Region (when `AI_PROVIDER=bedrock`) |
 | `AWS_ACCESS_KEY_ID`| Optional | Empty | AWS Access Key ID |

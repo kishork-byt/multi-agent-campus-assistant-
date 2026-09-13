@@ -426,9 +426,13 @@ function getActiveModelRuntimeState() {
     if (requestedProvider === "bedrock") {
       // Check if Gemini is available as configured fallback
       if (hasValidGoogleCredentials()) {
+        const configuredModel = (process.env.GEMINI_MODEL || "").trim();
+        const geminiModelId = (configuredModel && configuredModel !== "gemini-2.5-flash")
+          ? configuredModel
+          : "gemini-3.6-flash";
         return {
           activeProvider: "Google Gemini",
-          activeModelId: process.env.GEMINI_MODEL || "gemini-2.5-flash",
+          activeModelId: geminiModelId,
           strandsVersion: "v1.17.0",
           state: "ACTIVE",
           isLiveCloud: true,
@@ -452,9 +456,13 @@ function getActiveModelRuntimeState() {
   // 2. Google Gemini requested or available
   if (requestedProvider === "gemini" || hasValidGoogleCredentials()) {
     if (hasValidGoogleCredentials()) {
+      const configuredModel = (process.env.GEMINI_MODEL || "").trim();
+      const geminiModelId = (configuredModel && configuredModel !== "gemini-2.5-flash")
+        ? configuredModel
+        : "gemini-3.6-flash";
       return {
         activeProvider: "Google Gemini",
-        activeModelId: process.env.GEMINI_MODEL || "gemini-2.5-flash",
+        activeModelId: geminiModelId,
         strandsVersion: "v1.17.0",
         state: "ACTIVE",
         isLiveCloud: true,

@@ -265,27 +265,31 @@ async function runRealModelVerification() {
   toolExecutionVerified = true;
   console.log("✓ Real model invocation and model-driven tool selection verified.\n");
 
-  // Consequential Action Human-in-the-Loop Confirmation on Live Flow
-  if (liveRes.approvalRequired && liveRes.approvalId) {
-    console.log("[PHASE 4 & 5: LIVE TOOL & MONGODB MUTATION CONFIRMATION]");
-    const liveApproveRes = await astraAgent.approve({
-      approvalId: liveRes.approvalId,
-      userId: "STU-LIVE-1",
-      userRole: "student"
-    });
-    assert.strictEqual(liveApproveRes.status, "COMPLETED", "Action must complete upon approval");
-    humanApprovalVerified = true;
+  // ------------------------------------------------------------
+  // PHASE 3B: CAMPUS LOCATION SEARCH MODEL-DRIVEN TOOL SELECTION
+  // ------------------------------------------------------------
+  console.log("Pacing live cloud requests to respect free-tier RPM (8s cooldown)...");
+  await new Promise(resolve => setTimeout(resolve, 8000));
 
-    // Verify in MongoDB
-    const liveDbEvent = await Event.findOne({ eventId: "e1" }).lean();
-    assert(liveDbEvent.registeredUsers.some(u => u.userId === "STU-LIVE-1"), "User STU-LIVE-1 registered in MongoDB");
-    mongoDbExecutionVerified = true;
-    console.log("✓ Live tool execution and MongoDB persistence verified.\n");
-  }
+  console.log("[PHASE 3B: CAMPUS LOCATION SEARCH MODEL-DRIVEN TOOL SELECTION]");
+  console.log("Prompt: 'Find the Central University Library and tell me where it is.'");
+  const campusSearchRes = await astraAgent.process({
+    message: "Find the Central University Library and tell me where it is.",
+    userId: "STU-LIVE-LOC",
+    role: "student"
+  });
+  console.log("  Location Query Status:", campusSearchRes.status);
+  console.log("  Tools Selected:       ", campusSearchRes.toolsUsed);
+  console.log("  Answer:               ", (campusSearchRes.answer || campusSearchRes.message || "").split("\n")[0]);
+  assert(campusSearchRes.toolsUsed && campusSearchRes.toolsUsed.length > 0, "Model must autonomously select campus search tool");
+  console.log("✓ Campus search tool autonomously selected and executed by Gemini model.\n");
 
   // ------------------------------------------------------------
   // PHASE 8: MULTILINGUAL MODEL REASONING
   // ------------------------------------------------------------
+  console.log("Pacing live cloud requests to respect free-tier RPM (8s cooldown)...");
+  await new Promise(resolve => setTimeout(resolve, 8000));
+
   console.log("[PHASE 8: MULTILINGUAL MODEL REASONING]");
   console.log("Testing Tamil/Tanglish: 'AI workshop ku register pannunga'...");
   const multiRes = await astraAgent.process({
@@ -296,11 +300,36 @@ async function runRealModelVerification() {
 
   console.log("  Multilingual Result Status:", multiRes.status);
   console.log("  Tools Selected:            ", multiRes.toolsUsed);
+  console.log("  Approval ID:               ", multiRes.approvalId || multiRes.pendingApproval?.approvalId);
   console.log("  Answer:                    ", (multiRes.answer || multiRes.message || "").split("\n")[0]);
 
   assert(multiRes.toolsUsed && multiRes.toolsUsed.length > 0, "Model must understand multilingual query and select appropriate tool");
   multilingualVerified = true;
   console.log("✓ Multilingual query understood and processed by real Gemini model.\n");
+
+  // ------------------------------------------------------------
+  // PHASE 4 & 5: LIVE TOOL & MONGODB MUTATION CONFIRMATION
+  // ------------------------------------------------------------
+  const activeApprovalId = (liveRes.approvalRequired && liveRes.approvalId) || multiRes.approvalId || (multiRes.pendingApproval && multiRes.pendingApproval.approvalId);
+  const activeApprovalUser = (liveRes.approvalRequired && liveRes.approvalId) ? "STU-LIVE-1" : "STU-LIVE-MULTI";
+
+  if (activeApprovalId) {
+    console.log("[PHASE 4 & 5: LIVE TOOL & MONGODB MUTATION CONFIRMATION]");
+    console.log(`Approving pending action ${activeApprovalId} for user ${activeApprovalUser}...`);
+    const liveApproveRes = await astraAgent.approve({
+      approvalId: activeApprovalId,
+      userId: activeApprovalUser,
+      userRole: "student"
+    });
+    assert.strictEqual(liveApproveRes.status, "COMPLETED", "Action must complete upon approval");
+    humanApprovalVerified = true;
+
+    // Verify in MongoDB
+    const liveDbEvent = await Event.findOne({ eventId: "e1" }).lean();
+    assert(liveDbEvent.registeredUsers.some(u => u.userId === activeApprovalUser), `User ${activeApprovalUser} registered in MongoDB`);
+    mongoDbExecutionVerified = true;
+    console.log(`✓ Live tool execution and MongoDB persistence verified for ${activeApprovalUser} (RSVP Count: ${liveDbEvent.rsvpCount}).\n`);
+  }
 
   console.log("============================================================");
   console.log("STRANDS VERSION: " + runtimeState.strandsVersion);
