@@ -46,18 +46,86 @@
   list-style: none;
 }
 
+/* Smooth Scrolling & Anchor Offset */
+html {
+  scroll-behavior: smooth;
+}
+
+.landing-section {
+  padding: 5rem 2rem;
+  scroll-margin-top: var(--navbar-height);
+  position: relative;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.landing-section-full {
+  width: 100%;
+  position: relative;
+  scroll-margin-top: var(--navbar-height);
+}
+
+.landing-hero {
+  background: radial-gradient(circle at 50% 20%, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.05) 50%, transparent 80%);
+  padding: 6rem 2rem 4rem 2rem;
+}
+
+.landing-hero-grid {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 3.5rem;
+  align-items: center;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.landing-footer {
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-color);
+  padding: 4rem 2rem 2rem 2rem;
+  margin-top: 2rem;
+}
+
+.landing-footer-grid {
+  max-width: 1280px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 3rem;
+  margin-bottom: 3rem;
+}
+
+.landing-footer-bottom {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding-top: 2rem;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
 .nav-link {
   font-weight: 500;
   font-size: 0.95rem;
   color: var(--text-muted);
-  transition: color var(--transition-fast);
+  transition: all var(--transition-fast);
   padding: 0.5rem 0.75rem;
   border-radius: var(--radius-sm);
 }
 
 .nav-link:hover, .nav-link.active {
   color: var(--text-main);
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.nav-link.active {
+  color: var(--primary-400);
+  font-weight: 600;
 }
 
 .navbar-actions {
@@ -320,3 +388,520 @@ body[data-portal="public"] {
   gap: 1rem;
   min-height: 500px;
 }
+
+/* Portal Selector Page Specific Clean Single-Color Accents */
+.portal-card-student {
+  border-top: 4px solid #2563eb !important;
+}
+.portal-card-staff {
+  border-top: 4px solid #059669 !important;
+}
+.portal-card-admin {
+  border-top: 4px solid #d97706 !important;
+}
+
+.portal-btn-student {
+  background: #2563eb !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25) !important;
+  transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease !important;
+  width: 100%;
+}
+.portal-btn-student:hover {
+  background: #1d4ed8 !important;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4) !important;
+  transform: translateY(-1px) !important;
+}
+
+.portal-btn-staff {
+  background: #059669 !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.25) !important;
+  transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease !important;
+  width: 100%;
+}
+.portal-btn-staff:hover {
+  background: #047857 !important;
+  box-shadow: 0 4px 14px rgba(5, 150, 105, 0.4) !important;
+  transform: translateY(-1px) !important;
+}
+
+.portal-btn-admin {
+  background: #d97706 !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: 0 2px 8px rgba(217, 119, 6, 0.25) !important;
+  transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease !important;
+  width: 100%;
+}
+.portal-btn-admin:hover {
+  background: #b45309 !important;
+  box-shadow: 0 4px 14px rgba(217, 119, 6, 0.4) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* ==========================================================================
+   LANDING PAGE SECTION-SPECIFIC BACKGROUND ANIMATIONS & THEME ADAPTATION
+   ========================================================================== */
+
+.landing-canvas-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* 1. Hero Section Ambient Glow */
+.hero-ambient-glow {
+  position: absolute;
+  top: 25%;
+  left: 50%;
+  transform: translate(-50%, -25%);
+  width: 650px;
+  height: 650px;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.16) 0%, rgba(139, 92, 246, 0.06) 50%, transparent 75%);
+  filter: blur(60px);
+  pointer-events: none;
+  z-index: 0;
+  animation: heroPulse 10s ease-in-out infinite alternate;
+}
+[data-theme="light"] .hero-ambient-glow {
+  background: radial-gradient(circle, rgba(79, 70, 229, 0.08) 0%, rgba(59, 130, 246, 0.04) 50%, transparent 75%);
+  filter: blur(50px);
+}
+
+/* 2. Our Vision & What We Provide Floating Particles */
+.vision-particles-bg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
+}
+.floating-particle-dot {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(99, 102, 241, 0.15);
+  animation: floatUpDown 9s ease-in-out infinite alternate;
+}
+[data-theme="light"] .floating-particle-dot {
+  background: rgba(59, 130, 246, 0.12);
+}
+
+/* 3. AI-Powered Campus Grid & Data Streams */
+.ai-grid-bg {
+  position: absolute;
+  inset: 0;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 45px 45px;
+  pointer-events: none;
+  mask-image: radial-gradient(ellipse at center, rgba(0,0,0,0.85) 0%, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse at center, rgba(0,0,0,0.85) 0%, transparent 75%);
+}
+[data-theme="light"] .ai-grid-bg {
+  background-image: 
+    linear-gradient(to right, rgba(0, 0, 0, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
+}
+.data-stream-line {
+  position: absolute;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(6, 182, 212, 0.35), transparent);
+  width: 250px;
+  animation: dataStream 7s linear infinite;
+}
+[data-theme="light"] .data-stream-line {
+  background: linear-gradient(90deg, transparent, rgba(37, 99, 235, 0.25), transparent);
+}
+
+/* 4. Secure & Role-Based Security Rings */
+.security-bg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
+}
+.security-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border: 1px solid rgba(16, 185, 129, 0.08);
+  border-radius: 50%;
+  animation: ringPulse 14s ease-in-out infinite alternate;
+}
+[data-theme="light"] .security-ring {
+  border-color: rgba(16, 185, 129, 0.06);
+}
+
+/* 5. Final CTA Ambient Glow */
+.cta-ambient-glow {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(circle at 30% 50%, rgba(79, 70, 229, 0.16) 0%, rgba(139, 92, 246, 0.08) 50%, transparent 80%);
+  pointer-events: none;
+  animation: ctaGlow 8s ease-in-out infinite alternate;
+}
+[data-theme="light"] .cta-ambient-glow {
+  background: radial-gradient(circle at 30% 50%, rgba(79, 70, 229, 0.08) 0%, rgba(59, 130, 246, 0.04) 50%, transparent 80%);
+}
+
+/* Landing Keyframe Animations */
+@keyframes heroPulse {
+  0% { transform: translate(-50%, -25%) scale(0.92); opacity: 0.7; }
+  100% { transform: translate(-50%, -25%) scale(1.08); opacity: 1; }
+}
+
+@keyframes floatUpDown {
+  0% { transform: translateY(0px); }
+  100% { transform: translateY(-22px); }
+}
+
+@keyframes dataStream {
+  0% { transform: translateX(-100%); opacity: 0; }
+  30% { opacity: 1; }
+  100% { transform: translateX(600%); opacity: 0; }
+}
+
+@keyframes ringPulse {
+  0% { transform: translate(-50%, -50%) scale(0.88); opacity: 0.3; }
+  100% { transform: translate(-50%, -50%) scale(1.12); opacity: 0.8; }
+}
+
+@keyframes ctaGlow {
+  0% { opacity: 0.5; filter: blur(30px); }
+  100% { opacity: 1; filter: blur(55px); }
+}
+
+/* Reduced Motion User Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .hero-ambient-glow,
+  .floating-particle-dot,
+  .data-stream-line,
+  .security-ring,
+  .cta-ambient-glow {
+    animation: none !important;
+    transform: none !important;
+  }
+}
+
+/* ==========================================================================
+   REDESIGNED CAMPUS AI COPILOT INTERACTIVE PREVIEW CARD
+   ========================================================================== */
+.copilot-preview-card {
+  position: relative;
+  padding: 1.85rem;
+  border-radius: 20px;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  background: rgba(15, 23, 42, 0.78);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.4), inset 0 0 35px rgba(99, 102, 241, 0.1);
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+[data-theme="light"] .copilot-preview-card {
+  background: rgba(255, 255, 255, 0.92);
+  border-color: rgba(79, 70, 229, 0.22);
+  box-shadow: 0 25px 60px rgba(79, 70, 229, 0.12), inset 0 0 25px rgba(99, 102, 241, 0.05);
+}
+
+.copilot-card-glow {
+  position: absolute;
+  top: -50px;
+  right: -50px;
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.25) 0%, rgba(168, 85, 247, 0.1) 60%, transparent 80%);
+  filter: blur(40px);
+  pointer-events: none;
+}
+
+/* Header Bar */
+.copilot-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(99, 102, 241, 0.18);
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+[data-theme="light"] .copilot-header {
+  border-bottom-color: rgba(79, 70, 229, 0.12);
+}
+
+.copilot-brand-group {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+.copilot-brand-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--primary-500, #6366f1), var(--accent-violet, #a855f7));
+  color: #ffffff;
+  font-size: 1.2rem;
+  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.35);
+}
+.copilot-title {
+  display: block;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-main);
+  line-height: 1.2;
+}
+.copilot-status {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--status-success, #10b981);
+}
+.status-dot-pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 10px #10b981;
+  animation: dotPulse 2s ease-in-out infinite;
+}
+@keyframes dotPulse {
+  0% { transform: scale(0.9); opacity: 0.7; }
+  50% { transform: scale(1.25); opacity: 1; }
+  100% { transform: scale(0.9); opacity: 0.7; }
+}
+
+.copilot-preview-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.8rem;
+  background: rgba(99, 102, 241, 0.12);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--primary-400, #818cf8);
+  box-shadow: 0 2px 10px rgba(99, 102, 241, 0.15);
+}
+[data-theme="light"] .copilot-preview-badge {
+  background: rgba(79, 70, 229, 0.08);
+  border-color: rgba(79, 70, 229, 0.25);
+  color: #4f46e5;
+}
+
+/* Interactive Prompt Chips */
+.copilot-prompt-chips {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+}
+.copilot-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.38rem 0.8rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 9999px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+.copilot-chip:hover, .copilot-chip.active {
+  background: rgba(99, 102, 241, 0.18);
+  border-color: var(--primary-500);
+  color: var(--primary-400);
+  font-weight: 600;
+  box-shadow: 0 2px 12px rgba(99, 102, 241, 0.2);
+}
+
+/* Chat Messages Thread */
+.copilot-chat-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  margin-bottom: 1.5rem;
+}
+
+.copilot-msg {
+  border-radius: 14px;
+  padding: 1.1rem 1.2rem;
+  transition: all 0.2s ease;
+}
+
+/* Student Message */
+.student-msg {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 14px 14px 4px 14px;
+}
+.student-msg .msg-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.4rem;
+}
+.student-msg .user-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--primary-400, #3b82f6);
+  text-transform: uppercase;
+}
+.student-msg .msg-time {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+.student-msg .msg-body {
+  font-size: 0.92rem;
+  color: var(--text-main);
+  line-height: 1.5;
+  font-weight: 500;
+}
+
+/* AI Message */
+.ai-msg {
+  background: rgba(99, 102, 241, 0.09);
+  border: 1px solid rgba(99, 102, 241, 0.28);
+  border-left: 4px solid var(--primary-500, #6366f1);
+  border-radius: 14px 14px 14px 4px;
+  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.08);
+}
+[data-theme="light"] .ai-msg {
+  background: rgba(79, 70, 229, 0.05);
+  border-color: rgba(79, 70, 229, 0.2);
+  border-left-color: #4f46e5;
+}
+.ai-msg .msg-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.ai-msg .ai-avatar-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary-500), var(--accent-violet));
+  color: #ffffff;
+  font-size: 0.75rem;
+}
+.ai-msg .ai-name {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--accent-violet, #a855f7);
+}
+.ai-msg .verified-tag {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--status-success, #10b981);
+}
+.ai-msg .msg-body {
+  font-size: 0.92rem;
+  color: var(--text-main);
+  line-height: 1.6;
+}
+.copilot-action-footer {
+  margin-top: 0.75rem;
+  padding-top: 0.5rem;
+  border-top: 1px stroke rgba(99, 102, 241, 0.15);
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+.copilot-action-footer .footer-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+/* Processing Bar */
+.copilot-processing-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 0.9rem;
+  background: rgba(99, 102, 241, 0.12);
+  border-radius: 10px;
+  font-size: 0.8rem;
+  color: var(--primary-400);
+}
+
+/* Input Container */
+.copilot-input-container {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+.input-wrapper {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+.input-wrapper .input-icon {
+  position: absolute;
+  left: 0.9rem;
+  width: 18px;
+  height: 18px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+.input-field-copilot {
+  width: 100%;
+  padding: 0.75rem 1rem 0.75rem 2.6rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  font-size: 0.88rem;
+  color: var(--text-main);
+  transition: all 0.2s ease;
+}
+.input-field-copilot:focus {
+  border-color: var(--primary-500);
+  box-shadow: 0 0 15px rgba(99, 102, 241, 0.25);
+  outline: none;
+}
+.copilot-send-btn {
+  padding: 0.75rem 1.1rem !important;
+  border-radius: 12px !important;
+  font-size: 0.9rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+
+
+
+

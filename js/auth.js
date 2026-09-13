@@ -24,8 +24,8 @@ const Auth = {
     let user = {
       name: "Alex Rivera",
       role: role,
-      id: "STU-2026-894",
-      department: "Computer Science & Engineering",
+      id: "STU-2026-101",
+      department: "AI & Machine Learning",
       avatar: "AR",
       email: "alex.rivera@university.edu"
     };

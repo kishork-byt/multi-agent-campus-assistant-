@@ -51,6 +51,48 @@ router.put("/:id", async (req, res) => {
   }
 });
 
+// POST /api/events/:id/rsvp - RSVP to an event (register or cancel)
+router.post("/:id/rsvp", async (req, res) => {
+  try {
+    const event = await Event.findOne(getEventQuery(req.params.id));
+    if (!event) return res.status(404).json({ success: false, error: "Event not found" });
+
+    const userId = req.body.userId || req.body.staffId || req.body.studentId || "STF-201";
+    const action = req.body.action || "register"; // 'register', 'cancel', or 'toggle'
+
+    if (!Array.isArray(event.rsvps)) {
+      event.rsvps = [];
+    }
+
+    if (action === "cancel" || action === "unregister") {
+      event.rsvps = event.rsvps.filter(id => id !== userId);
+    } else if (action === "toggle") {
+      if (event.rsvps.includes(userId)) {
+        event.rsvps = event.rsvps.filter(id => id !== userId);
+      } else {
+        event.rsvps.push(userId);
+      }
+    } else {
+      // default: register
+      if (!event.rsvps.includes(userId)) {
+        event.rsvps.push(userId);
+      }
+    }
+
+    event.rsvpCount = event.rsvps.length;
+    await event.save();
+
+    res.json({
+      success: true,
+      registered: event.rsvps.includes(userId),
+      count: event.rsvpCount,
+      data: event
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // DELETE /api/events/:id - Delete event
 router.delete("/:id", async (req, res) => {
   try {

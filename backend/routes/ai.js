@@ -5,7 +5,7 @@ const campusNovaAgent = require("../services/agents/CampusNovaAgent");
 // POST /api/ai/chat - Process message via primary CampusNova Agent
 router.post("/chat", async (req, res) => {
   try {
-    const { message, role, history, userId, conversationId } = req.body || {};
+    const { message, role, history, userId, studentId, staffId, conversationId } = req.body || {};
 
     if (!message || typeof message !== "string" || !message.trim()) {
       return res.status(400).json({
@@ -15,8 +15,17 @@ router.post("/chat", async (req, res) => {
     }
 
     const cleanMessage = message.trim();
-    const userRole = role || "student";
-    const currentUserId = userId || "STU-2026-894";
+    // Validate role safely against allowed roles
+    const validRoles = ["student", "staff", "faculty", "admin"];
+    const normalizedRole = typeof role === "string" ? role.toLowerCase().trim() : "";
+    const userRole = validRoles.includes(normalizedRole) ? normalizedRole : "student";
+
+    // Resolve effective user ID safely with backward-compatible fallbacks
+    const currentUserId = (typeof userId === "string" && userId.trim())
+      || (typeof studentId === "string" && studentId.trim())
+      || (typeof staffId === "string" && staffId.trim())
+      || (userRole === "staff" || userRole === "faculty" ? "STAFF-01" : userRole === "admin" ? "ADMIN-01" : "STU-2026-894");
+
     const convId = conversationId || `conv_${Date.now()}`;
 
     const agentResponse = await campusNovaAgent.execute(cleanMessage, {
@@ -26,23 +35,26 @@ router.post("/chat", async (req, res) => {
       history: Array.isArray(history) ? history : []
     });
 
+    const reply = agentResponse.message || agentResponse.answer || "";
+
     res.json({
       success: true,
       data: {
-        reply: agentResponse.message || agentResponse.answer,
-        answer: agentResponse.message || agentResponse.answer,
+        reply: reply,
+        answer: reply,
         agent: agentResponse.agent || "CampusNova",
-        agentRole: "Autonomous Campus Agent",
+        agentRole: agentResponse.agentRole || "Autonomous Campus Agent",
         status: agentResponse.status,
         executionId: agentResponse.executionId,
-        toolsUsed: agentResponse.toolsUsed,
+        toolsUsed: agentResponse.toolsUsed || [],
         approvalRequired: !!agentResponse.approvalRequired,
         approvalId: agentResponse.approvalId,
         actionDetails: agentResponse.actionDetails,
         cards: agentResponse.cards || [],
-        confidence: 0.98,
+        confidence: agentResponse.confidence || 0.98,
         conversationId: convId,
         role: userRole,
+        userId: currentUserId,
         timestamp: new Date().toISOString()
       }
     });
