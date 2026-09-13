@@ -244,6 +244,8 @@ const App = {
     } else if (this.currentPortal === 'student') {
       switch (this.currentRoute) {
         case 'ai-assistant': content = StudentViews.renderAIAssistant(); break;
+        case 'service-requests': content = StudentViews.renderServiceRequests(); break;
+        case 'campus-map': content = StudentViews.renderCampusMap(); break;
         case 'community': content = StudentViews.renderCommunity(); break;
         case 'notifications': content = StudentViews.renderNotifications(); break;
         case 'timetable': content = StudentViews.renderTimetable(); break;
@@ -256,6 +258,8 @@ const App = {
     } else if (this.currentPortal === 'staff') {
       switch (this.currentRoute) {
         case 'ai-assistant': content = StaffViews.renderAIAssistant(); break;
+        case 'service-requests': content = StaffViews.renderServiceRequests(); break;
+        case 'campus-map': content = StaffViews.renderCampusMap(); break;
         case 'community': content = StaffViews.renderCommunity(); break;
         case 'notifications': content = StaffViews.renderNotifications(); break;
         case 'events': content = StaffViews.renderEvents(); break;
@@ -267,6 +271,11 @@ const App = {
       }
     } else if (this.currentPortal === 'admin') {
       switch (this.currentRoute) {
+        case 'ai-copilot': content = AdminViews.renderAIAssistant(); break;
+        case 'service-requests': content = AdminViews.renderServiceRequests(); break;
+        case 'knowledge-base': content = AdminViews.renderKnowledgeBase(); break;
+        case 'ai-logs': content = AdminViews.renderAgentLogs(); break;
+        case 'campus-map': content = AdminViews.renderCampusMap(); break;
         case 'community': content = AdminViews.renderCommunity(); break;
         case 'community-moderation': content = AdminViews.renderCommunityModeration(); break;
         case 'students-management': content = AdminViews.renderStudentsManagement(); break;

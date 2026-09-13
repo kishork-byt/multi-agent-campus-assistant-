@@ -450,9 +450,7 @@ const StudentViews = {
           </div>
           <div class="card">
             <div class="stat-icon" style="margin-bottom: 1rem;"><i data-lucide="map"></i></div>
-            <h3>Interactive Campus Map</h3>
-            <p style="color: var(--text-muted); font-size: 0.88rem; margin-top: 0.5rem; margin-bottom: 1rem;">Locate lecture halls, AI research labs, auditoriums, and cafeterias.</p>
-            <button class="btn btn-outline btn-sm" style="width: 100%;" onclick="alert('Interactive map loaded.')">View Map</button>
+            <button class="btn btn-outline btn-sm" style="width: 100%;" onclick="window.location.hash = '#/student/campus-map'">View Campus Map</button>
           </div>
         </div>
 
@@ -505,5 +503,17 @@ const StudentViews = {
   // 8. Anonymous Campus Community Page
   renderCommunity: function() {
     return CommunityView.render('student');
+  },
+
+  // 9. Service Requests & Helpdesk Tickets
+  renderServiceRequests: function() {
+    setTimeout(() => ServiceRequestsView.loadTickets('student'), 50);
+    return ServiceRequestsView.render('student');
+  },
+
+  // 10. Interactive Campus Map
+  renderCampusMap: function() {
+    setTimeout(() => CampusMapView.initMap(), 100);
+    return CampusMapView.render('student');
   }
 };

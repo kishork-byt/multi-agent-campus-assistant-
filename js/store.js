@@ -8,6 +8,13 @@ const Store = {
   data: null,
   backendStatus: { connected: true, lastError: null },
 
+  get API_BASE() {
+    if (typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin.startsWith('http')) {
+      return `${window.location.origin}/api`;
+    }
+    return 'http://localhost:5000/api';
+  },
+
   init: function() {
     const raw = localStorage.getItem(this.STORAGE_KEY);
     if (raw) {
@@ -56,6 +63,366 @@ const Store = {
       this.data.aiChatHistory = { student: [], staff: [], admin: [] };
     }
     return this.data.aiChatHistory[role] || [];
+  },
+
+  addAIChatMessage: function(role, sender, text) {
+    if (!this.data.aiChatHistory) {
+      this.data.aiChatHistory = { student: [], staff: [], admin: [] };
+    }
+    if (!this.data.aiChatHistory[role]) {
+      this.data.aiChatHistory[role] = [];
+    }
+    this.data.aiChatHistory[role].push({ sender, text, timestamp: new Date().toISOString() });
+    this.save();
+  },
+
+  clearAIChatHistory: function(role) {
+    if (!this.data.aiChatHistory) {
+      this.data.aiChatHistory = { student: [], staff: [], admin: [] };
+    }
+    this.data.aiChatHistory[role] = [];
+    this.save();
+  },
+
+  sendAIChatMessage: async function(role, message) {
+    try {
+      const history = this.getAIChatHistory(role);
+      const currentUser = (typeof Auth !== 'undefined' && Auth.getCurrentUser) ? Auth.getCurrentUser() : { id: 'STU-2026-894', role };
+      const conversationId = `conv_${role}_${currentUser.id}`;
+
+      // 1. Primary Autonomous Agent Endpoint: POST /api/agent/chat
+      const token = (typeof Auth !== 'undefined' && Auth.getToken) ? Auth.getToken() : null;
+      const headers = {
+        'Content-Type': 'application/json',
+        'X-User-Id': currentUser.id,
+        'X-User-Role': currentUser.role || role
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+        headers['X-Session-Token'] = token;
+      }
+
+      let res = await fetch(`${this.API_BASE}/agent/chat`, {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify({
+          message,
+          conversationId,
+          role: currentUser.role || role,
+          history
+        })
+      }).catch(() => null);
+
+      if (res && res.ok) {
+        const result = await res.json();
+        return {
+          success: true,
+          answer: result.message || result.answer || '',
+          reply: result.message || result.answer || '',
+          agent: result.agent || 'CampusNova',
+          agentRole: 'Autonomous Campus Agent',
+          status: result.status || 'COMPLETED',
+          executionId: result.executionId,
+          toolsUsed: result.toolsUsed || [],
+          approvalRequired: !!result.approvalRequired,
+          approvalId: result.approvalId,
+          actionDetails: result.actionDetails,
+          cards: result.cards || [],
+          confidence: 0.98,
+          requiresHumanSupport: false,
+          conversationId: result.conversationId || conversationId
+        };
+      }
+
+      // 2. Legacy Fallback to /api/chat
+      res = await fetch(`${this.API_BASE}/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          role,
+          message,
+          userId: currentUser.id,
+          conversationId,
+          history
+        })
+      }).catch(() => null);
+
+      if (res && res.ok) {
+        const result = await res.json();
+        const data = result.data || result;
+        const reply = data.answer || data.reply || result.answer || '';
+        return {
+          success: true,
+          reply,
+          answer: reply,
+          agent: data.agent || 'CampusNova',
+          agentRole: 'Campus Agent',
+          sources: data.sources || [],
+          confidence: data.confidence !== undefined ? data.confidence : 0.92,
+          requiresHumanSupport: !!(data.requiresHumanSupport || result.requiresHumanSupport),
+          conversationId: data.conversationId || conversationId
+        };
+      }
+
+      return { success: false, error: 'Received invalid response format from AI Assistant service.' };
+    } catch (e) {
+      console.warn('AI Chat API endpoint connection error:', e.message);
+      return { success: false, error: 'Unable to connect to AI Assistant backend service. Please verify server is running.' };
+    }
+  },
+
+  approveAgentAction: async function(approvalId) {
+    try {
+      const currentUser = (typeof Auth !== 'undefined' && Auth.getCurrentUser) ? Auth.getCurrentUser() : { id: 'STU-2026-894', role: 'student' };
+      const token = (typeof Auth !== 'undefined' && Auth.getToken) ? Auth.getToken() : null;
+      const headers = {
+        'Content-Type': 'application/json',
+        'X-User-Id': currentUser.id,
+        'X-User-Role': currentUser.role || 'student'
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+        headers['X-Session-Token'] = token;
+      }
+
+      const res = await fetch(`${this.API_BASE}/agent/approve`, {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify({ approvalId })
+      });
+      return await res.json();
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  },
+
+  rejectAgentAction: async function(approvalId) {
+    try {
+      const currentUser = (typeof Auth !== 'undefined' && Auth.getCurrentUser) ? Auth.getCurrentUser() : { id: 'STU-2026-894', role: 'student' };
+      const token = (typeof Auth !== 'undefined' && Auth.getToken) ? Auth.getToken() : null;
+      const headers = {
+        'Content-Type': 'application/json',
+        'X-User-Id': currentUser.id,
+        'X-User-Role': currentUser.role || 'student'
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+        headers['X-Session-Token'] = token;
+      }
+
+      const res = await fetch(`${this.API_BASE}/agent/reject`, {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify({ approvalId })
+      });
+      return await res.json();
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  },
+
+  fetchAutopilotInsights: async function(role, userId) {
+    try {
+      const currentUser = (typeof Auth !== 'undefined' && Auth.getCurrentUser) ? Auth.getCurrentUser() : { id: userId || 'STU-2026-894', role: role || 'student' };
+      const res = await fetch(`${this.API_BASE}/agent/autopilot`, {
+        headers: {
+          'X-User-Id': currentUser.id,
+          'X-User-Role': currentUser.role || 'student'
+        }
+      });
+      if (res.ok) {
+        const json = await res.json();
+        return json.data || [];
+      }
+    } catch (e) {
+      console.warn('Autopilot fetch error:', e.message);
+    }
+    return [];
+  },
+
+  fetchAgentExecutions: async function(limit = 30) {
+    try {
+      const res = await fetch(`${this.API_BASE}/agent/executions?limit=${limit}`);
+      if (res.ok) {
+        const json = await res.json();
+        return json.data || [];
+      }
+    } catch (e) {
+      console.warn('Agent executions fetch error:', e.message);
+    }
+    return [];
+  },
+
+  getAgentLogs: async function(limit = 30) {
+    return await this.fetchAgentExecutions(limit);
+  },
+
+  // Service Requests Store API
+  getServiceRequests: async function(role, userId) {
+    try {
+      const params = new URLSearchParams();
+      if (role) params.append('role', role);
+      if (userId) params.append('userId', userId);
+      const res = await fetch(`${this.API_BASE}/service-requests?${params.toString()}`);
+      if (res.ok) {
+        const result = await res.json();
+        return result.data || [];
+      }
+    } catch (e) {
+      console.warn('Error fetching service requests:', e.message);
+    }
+    return [];
+  },
+
+  createServiceRequest: async function(ticketData) {
+    try {
+      const res = await fetch(`${this.API_BASE}/service-requests`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(ticketData)
+      });
+      if (res.ok) {
+        const result = await res.json();
+        return { success: true, data: result.data };
+      }
+      const err = await res.json().catch(() => ({}));
+      return { success: false, error: err.error || 'Failed to create request.' };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  },
+
+  updateServiceRequest: async function(ticketId, updates) {
+    try {
+      const res = await fetch(`${this.API_BASE}/service-requests/${ticketId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      });
+      if (res.ok) {
+        const result = await res.json();
+        return { success: true, data: result.data };
+      }
+      return { success: false, error: 'Update failed.' };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  },
+
+  // Knowledge Base Store API
+  getKnowledgeBaseDocs: async function() {
+    try {
+      const res = await fetch(`${this.API_BASE}/knowledge-base/documents`);
+      if (res.ok) {
+        const result = await res.json();
+        return result.data || [];
+      }
+    } catch (e) {
+      console.warn('Error fetching knowledge base documents:', e.message);
+    }
+    return [];
+  },
+
+  uploadKnowledgeBaseDoc: async function(docData) {
+    try {
+      const res = await fetch(`${this.API_BASE}/knowledge-base/upload`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(docData)
+      });
+      if (res.ok) {
+        const result = await res.json();
+        return { success: true, data: result.data, message: result.message };
+      }
+      const err = await res.json().catch(() => ({}));
+      return { success: false, error: err.error || 'Failed to upload document.' };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  },
+
+  deleteKnowledgeBaseDoc: async function(docId) {
+    try {
+      const res = await fetch(`${this.API_BASE}/knowledge-base/documents/${docId}`, {
+        method: 'DELETE'
+      });
+      return res.ok;
+    } catch (e) {
+      return false;
+    }
+  },
+
+  getKnowledgeBaseChunks: async function(docId) {
+    try {
+      const res = await fetch(`${this.API_BASE}/knowledge-base/documents/${docId}/chunks`);
+      if (res.ok) {
+        const result = await res.json();
+        return result.data || [];
+      }
+    } catch (e) {
+      return [];
+    }
+  },
+
+  getKnowledgeBaseStats: async function() {
+    try {
+      const res = await fetch(`${this.API_BASE}/knowledge-base/stats`);
+      if (res.ok) {
+        const result = await res.json();
+        return result.data || null;
+      }
+    } catch (e) {
+      return null;
+    }
+  },
+
+  // Multi-Agent Execution Audit Logs API
+  getAgentLogs: async function(limit = 40) {
+    try {
+      const res = await fetch(`${this.API_BASE}/agent-logs?limit=${limit}`);
+      if (res.ok) {
+        const result = await res.json();
+        return result.data || [];
+      }
+    } catch (e) {
+      console.warn('Error fetching agent logs:', e.message);
+    }
+    return [];
+  },
+
+  // Campus Locations API
+  getCampusLocations: async function(query, category) {
+    try {
+      const params = new URLSearchParams();
+      if (query) params.append('query', query);
+      if (category) params.append('category', category);
+      const res = await fetch(`${this.API_BASE}/campus/locations?${params.toString()}`);
+      if (res.ok) {
+        const result = await res.json();
+        return result.data || [];
+      }
+    } catch (e) {
+      console.warn('Error fetching campus locations:', e.message);
+    }
+    return [];
+  },
+
+  // Campus Navigation & Dijkstra Routing API
+  getCampusDirections: async function(from, to, accessible = false) {
+    try {
+      const params = new URLSearchParams();
+      if (from) params.append('from', from);
+      if (to) params.append('to', to);
+      if (accessible) params.append('accessible', 'true');
+      const res = await fetch(`${this.API_BASE}/campus/directions?${params.toString()}`);
+      if (res.ok) {
+        const result = await res.json();
+        return result.data || null;
+      }
+    } catch (e) {
+      console.warn('Error fetching campus directions:', e.message);
+    }
+    return null;
   },
 
   getNotifications: function(role) {
@@ -450,8 +817,6 @@ const Store = {
     this.save();
     return p;
   },
-
-  API_BASE: 'http://localhost:5000/api',
 
   // Sync Students List from Backend API with LocalStorage Fallback
   syncStudentsFromBackend: async function() {

@@ -379,5 +379,17 @@ const StaffViews = {
   // 8. Anonymous Campus Community Page
   renderCommunity: function() {
     return CommunityView.render('staff');
+  },
+
+  // 9. Service Requests & Faculty Helpdesk
+  renderServiceRequests: function() {
+    setTimeout(() => ServiceRequestsView.loadTickets('staff'), 50);
+    return ServiceRequestsView.render('staff');
+  },
+
+  // 10. Campus Map
+  renderCampusMap: function() {
+    setTimeout(() => CampusMapView.initMap(), 100);
+    return CampusMapView.render('staff');
   }
 };

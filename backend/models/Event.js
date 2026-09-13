@@ -14,7 +14,15 @@ const eventSchema = new mongoose.Schema(
     venue: { type: String, default: "" },
     status: { type: String, enum: ["Approved", "Pending Approval", "Rejected"], default: "Approved" },
     role: { type: String, default: "Attendee" },
-    rsvpCount: { type: Number, default: 0 }
+    rsvpCount: { type: Number, default: 0 },
+    registeredUsers: [
+      {
+        userId: { type: String, required: true },
+        name: { type: String, default: "Student" },
+        role: { type: String, default: "student" },
+        registeredAt: { type: Date, default: Date.now }
+      }
+    ]
   },
   { timestamps: true }
 );

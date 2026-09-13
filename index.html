@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>College AI Assistant | Intelligent Campus Platform</title>
-  <meta name="description" content="Next-Generation College AI Assistant responsive website platform for Students, Faculty, Staff, and Administration.">
+  <title>CampusNova — Autonomous Campus Agent</title>
+  <meta name="description" content="CampusNova is a Strands-powered autonomous campus agent that handles repetitive campus tasks for students, faculty, and administrators by connecting natural-language requests to real campus services.">
   
   <!-- Favicon Icon -->
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🤖</text></svg>">
@@ -15,11 +15,15 @@
   <!-- Chart.js CDN for Visual Analytics -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+  <!-- Leaflet CSS & JS for Interactive Campus Map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
   <!-- Custom Stylesheets -->
-  <link rel="stylesheet" href="css/main.css?v=6">
-  <link rel="stylesheet" href="css/components.css?v=6">
-  <link rel="stylesheet" href="css/portals.css?v=6">
-  <link rel="stylesheet" href="css/responsive.css?v=6">
+  <link rel="stylesheet" href="css/main.css?v=8">
+  <link rel="stylesheet" href="css/components.css?v=8">
+  <link rel="stylesheet" href="css/portals.css?v=8">
+  <link rel="stylesheet" href="css/responsive.css?v=8">
 </head>
 <body>
 
@@ -27,26 +31,30 @@
   <div id="app-root"></div>
 
   <!-- JavaScript Datastore, Store & Auth Engines -->
-  <script src="js/mockData.js?v=6"></script>
-  <script src="js/auth.js?v=6"></script>
-  <script src="js/store.js?v=6"></script>
+  <script src="js/mockData.js?v=8"></script>
+  <script src="js/auth.js?v=8"></script>
+  <script src="js/store.js?v=8"></script>
 
   <!-- UI Components -->
-  <script src="js/components/navbar.js?v=6"></script>
-  <script src="js/components/sidebar.js?v=6"></script>
-  <script src="js/components/aiChat.js?v=6"></script>
-  <script src="js/components/charts.js?v=6"></script>
-  <script src="js/components/modals.js?v=6"></script>
-  <script src="js/components/communityView.js?v=6"></script>
+  <script src="js/components/navbar.js?v=8"></script>
+  <script src="js/components/sidebar.js?v=8"></script>
+  <script src="js/components/aiChat.js?v=8"></script>
+  <script src="js/components/campusMapView.js?v=8"></script>
+  <script src="js/components/serviceRequestsView.js?v=8"></script>
+  <script src="js/components/knowledgeBaseView.js?v=8"></script>
+  <script src="js/components/agentLogsView.js?v=8"></script>
+  <script src="js/components/charts.js?v=8"></script>
+  <script src="js/components/modals.js?v=8"></script>
+  <script src="js/components/communityView.js?v=8"></script>
 
   <!-- Views -->
-  <script src="js/views/publicViews.js?v=6"></script>
-  <script src="js/views/studentViews.js?v=6"></script>
-  <script src="js/views/staffViews.js?v=6"></script>
-  <script src="js/views/adminViews.js?v=6"></script>
+  <script src="js/views/publicViews.js?v=7"></script>
+  <script src="js/views/studentViews.js?v=7"></script>
+  <script src="js/views/staffViews.js?v=7"></script>
+  <script src="js/views/adminViews.js?v=7"></script>
 
   <!-- Central App Logic -->
-  <script src="js/app.js?v=6"></script>
+  <script src="js/app.js?v=7"></script>
 
 </body>
 </html>

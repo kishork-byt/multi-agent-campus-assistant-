@@ -58,6 +58,33 @@ const Auth = {
 
     MockData.currentUser = user;
     sessionStorage.setItem(this.SESSION_KEY, JSON.stringify(this.currentSession));
+    this.syncServerSession();
+  },
+
+  syncServerSession: async function() {
+    try {
+      if (!this.currentSession || !this.currentSession.user) return;
+      const user = this.currentSession.user;
+      const res = await fetch('/api/agent/auth/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: user.role, userId: user.id })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.token) {
+          this.currentSession.token = data.token;
+          sessionStorage.setItem(this.SESSION_KEY, JSON.stringify(this.currentSession));
+        }
+      }
+    } catch (e) {
+      // Graceful offline fallback
+    }
+  },
+
+  getToken: function() {
+    if (!this.currentSession) this.init();
+    return this.currentSession ? this.currentSession.token : null;
   },
 
   login: function(role, id, password) {
@@ -94,3 +121,4 @@ const Auth = {
 
 // Initialize Auth
 Auth.init();
+Auth.syncServerSession();

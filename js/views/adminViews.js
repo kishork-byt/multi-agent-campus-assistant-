@@ -3,52 +3,113 @@
    ========================================================================== */
 
 const AdminViews = {
-  // 1. Dashboard
+  // 1. Dashboard (Comprehensive Phase 5 Implementation)
   renderDashboard: function() {
-    const stats = Store.getAdminStats();
+    const students = Store.getStudentsList() || [];
+    const staff = Store.getStaffList() || [];
+    const events = Store.getEventsApprovals() || [];
+    const upcomingEvents = events.filter(e => e.status === 'Approved');
+    const serviceRequests = Store.data?.serviceRequests || [];
+    const openRequests = serviceRequests.filter(s => s.status !== 'RESOLVED' && s.status !== 'CLOSED');
+    const announcements = Store.getAnnouncements() || [];
+    const agentLogs = Store.data?.agentLogs || Store.data?.admin?.auditLogs || [];
+    const recentLogs = agentLogs.slice(0, 5);
+
+    // Trigger async sync of service requests & agent logs in background if needed
+    if (!Store.data?.serviceRequests) {
+      setTimeout(() => {
+        Store.getServiceRequests('admin').then(() => {
+          const el = document.getElementById('admin-dash-open-requests-count');
+          if (el) {
+            const reqs = Store.data?.serviceRequests || [];
+            const open = reqs.filter(s => s.status !== 'RESOLVED' && s.status !== 'CLOSED');
+            el.innerText = open.length;
+          }
+        });
+      }, 50);
+    }
+
     return `
       <div>
+        <!-- Welcome Hero Banner -->
         <div class="card glass-panel" style="background: linear-gradient(135deg, rgba(217, 119, 6, 0.2) 0%, rgba(124, 58, 237, 0.1) 100%); margin-bottom: 2rem; border-color: rgba(245, 158, 11, 0.3);">
           <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
             <div>
-              <span class="badge badge-admin" style="margin-bottom: 0.5rem;">Administration Portal</span>
-              <h1 style="font-size: 2rem; font-weight: 800;">Campus Administration Overview</h1>
-              <p style="color: var(--text-muted); font-size: 0.95rem;">System status normal • ${stats.totalStudents} enrolled students • ${stats.departments} departments active.</p>
+              <span class="badge badge-admin" style="margin-bottom: 0.5rem;"><i data-lucide="shield"></i> Administration Portal</span>
+              <h1 style="font-size: 2rem; font-weight: 800; margin: 0 0 0.25rem 0;">Campus Administration Overview</h1>
+              <p style="color: var(--text-muted); font-size: 0.95rem; margin: 0;">
+                CampusNova Autonomous Operations Active • <strong>${students.length}</strong> enrolled students • <strong>${staff.length}</strong> faculty & staff.
+              </p>
             </div>
-            <button class="btn btn-primary" onclick="ModalsComponent.openModal('modal-add-student')" style="background: linear-gradient(135deg, #d97706, #7c3aed);">
-              <i data-lucide="user-plus"></i> Add New Student
-            </button>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+              <button class="btn btn-primary" onclick="ModalsComponent.openModal('modal-add-student')" style="background: linear-gradient(135deg, #d97706, #7c3aed);">
+                <i data-lucide="user-plus"></i> Add Student
+              </button>
+              <button class="btn btn-secondary" onclick="ModalsComponent.openModal('modal-add-staff')">
+                <i data-lucide="user-check"></i> Register Faculty
+              </button>
+            </div>
           </div>
         </div>
 
-        <!-- Metrics -->
+        <!-- 4 Primary Overview Cards (Phase 5 Required) -->
         <div class="grid-cols-4" style="margin-bottom: 2rem;">
-          <div class="stat-card">
+          <div class="stat-card" style="cursor: pointer;" onclick="App.navigateTo('admin/students-management')">
             <div class="stat-icon" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;"><i data-lucide="users"></i></div>
             <div class="stat-info">
-              <span class="stat-value">${stats.totalStudents}</span>
-              <span class="stat-label">Total Enrolled Students</span>
+              <span class="stat-value">${students.length}</span>
+              <span class="stat-label">Total Students</span>
+              <span class="stat-change up"><i data-lucide="check"></i> Enrolled</span>
             </div>
           </div>
-          <div class="stat-card">
+          <div class="stat-card" style="cursor: pointer;" onclick="App.navigateTo('admin/staff-management')">
             <div class="stat-icon" style="background: rgba(16, 185, 129, 0.15); color: #10b981;"><i data-lucide="user-check"></i></div>
             <div class="stat-info">
-              <span class="stat-value">${stats.totalStaff}</span>
-              <span class="stat-label">Active Faculty & Staff</span>
+              <span class="stat-value">${staff.length}</span>
+              <span class="stat-label">Total Faculty/Staff</span>
+              <span class="stat-change up"><i data-lucide="check"></i> Verified</span>
             </div>
           </div>
-          <div class="stat-card">
-            <div class="stat-icon" style="background: rgba(99, 102, 241, 0.15); color: #6366f1;"><i data-lucide="building"></i></div>
+          <div class="stat-card" style="cursor: pointer;" onclick="App.navigateTo('admin/service-requests')">
+            <div class="stat-icon" style="background: rgba(239, 68, 68, 0.15); color: #ef4444;"><i data-lucide="life-buoy"></i></div>
             <div class="stat-info">
-              <span class="stat-value">${stats.departments}</span>
-              <span class="stat-label">Academic Departments</span>
+              <span class="stat-value" id="admin-dash-open-requests-count">${openRequests.length}</span>
+              <span class="stat-label">Open Service Requests</span>
+              <span class="stat-change down"><i data-lucide="alert-circle"></i> Needs Action</span>
             </div>
           </div>
-          <div class="stat-card">
-            <div class="stat-icon" style="background: rgba(6, 182, 212, 0.15); color: #06b6d4;"><i data-lucide="cpu"></i></div>
+          <div class="stat-card" style="cursor: pointer;" onclick="App.navigateTo('admin/events-management')">
+            <div class="stat-icon" style="background: rgba(99, 102, 241, 0.15); color: #818cf8;"><i data-lucide="calendar"></i></div>
             <div class="stat-info">
-              <span class="stat-value">${stats.activeAiQueries}</span>
-              <span class="stat-label">Daily AI Copilot Usage</span>
+              <span class="stat-value">${upcomingEvents.length}</span>
+              <span class="stat-label">Upcoming Events</span>
+              <span class="stat-change up"><i data-lucide="sparkles"></i> Scheduled</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Actions Bar (Phase 5) -->
+        <div class="card" style="margin-bottom: 2rem; padding: 1rem 1.25rem; background: var(--surface);">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+            <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 0.4rem;">
+              <i data-lucide="zap" style="width: 16px; height: 16px; color: #f59e0b;"></i> Quick Actions:
+            </span>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+              <button class="btn btn-secondary btn-sm" onclick="ModalsComponent.openModal('modal-add-announcement')">
+                <i data-lucide="megaphone" style="width: 13px; height: 13px;"></i> Publish Notice
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="ModalsComponent.openModal('modal-reserve-venue')">
+                <i data-lucide="calendar-plus" style="width: 13px; height: 13px;"></i> Reserve Venue
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="App.navigateTo('admin/ai-copilot')">
+                <i data-lucide="cpu" style="width: 13px; height: 13px; color: var(--primary-300);"></i> CampusNova AI
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="App.navigateTo('admin/campus-map')">
+                <i data-lucide="map" style="width: 13px; height: 13px; color: #10b981;"></i> Campus Map
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="App.navigateTo('admin/ai-logs')">
+                <i data-lucide="activity" style="width: 13px; height: 13px; color: #38bdf8;"></i> AI Multi-Agent Logs
+              </button>
             </div>
           </div>
         </div>
@@ -59,7 +120,7 @@ const AdminViews = {
             <div class="card-header">
               <h3 class="card-title"><i data-lucide="line-chart" style="color: var(--portal-accent);"></i> Weekly Campus Attendance Trends</h3>
             </div>
-            <div style="height: 250px; position: relative;">
+            <div style="height: 240px; position: relative;">
               <canvas id="admin-attendance-chart"></canvas>
             </div>
           </div>
@@ -68,8 +129,128 @@ const AdminViews = {
             <div class="card-header">
               <h3 class="card-title"><i data-lucide="bar-chart" style="color: var(--accent-cyan);"></i> Students per Department</h3>
             </div>
-            <div style="height: 250px; position: relative;">
+            <div style="height: 240px; position: relative;">
               <canvas id="admin-dept-chart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2 Column Layout: Upcoming Events & Recent Service Requests -->
+        <div class="grid-cols-2" style="margin-bottom: 2rem;">
+          <!-- Upcoming Events -->
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title"><i data-lucide="calendar" style="color: #818cf8;"></i> Upcoming Campus Events</h3>
+              <a href="#/admin/events-management" class="btn btn-ghost btn-sm">Manage Events →</a>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 0.85rem;">
+              ${events.length === 0 ? `
+                <div style="padding: 2rem; text-align: center; color: var(--text-muted); font-size: 0.88rem;">
+                  No data available. No events currently scheduled.
+                </div>
+              ` : events.slice(0, 4).map(e => `
+                <div style="padding: 0.85rem 1rem; background: var(--bg-secondary); border-radius: var(--radius-sm); border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                  <div>
+                    <strong style="font-size: 0.92rem; display: block; color: var(--text-main);">${e.title}</strong>
+                    <span style="font-size: 0.78rem; color: var(--text-muted); display: flex; gap: 0.75rem; margin-top: 0.2rem;">
+                      <span><i data-lucide="clock" style="width: 12px; height: 12px; vertical-align: middle;"></i> ${e.date}</span>
+                      <span><i data-lucide="map-pin" style="width: 12px; height: 12px; vertical-align: middle;"></i> ${e.venue || e.location || 'Campus'}</span>
+                    </span>
+                  </div>
+                  <span class="badge badge-${e.status === 'Approved' ? 'staff' : 'admin'}" style="font-size: 0.72rem;">${e.status}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+          <!-- Recent Support & Service Requests -->
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title"><i data-lucide="life-buoy" style="color: #f59e0b;"></i> Recent Support & Service Requests</h3>
+              <a href="#/admin/service-requests" class="btn btn-ghost btn-sm">Helpdesk →</a>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 0.85rem;">
+              ${serviceRequests.length === 0 ? `
+                <div style="padding: 2rem; text-align: center; color: var(--text-muted); font-size: 0.88rem;">
+                  No data available. All campus service requests resolved.
+                </div>
+              ` : serviceRequests.slice(0, 4).map(s => `
+                <div style="padding: 0.85rem 1rem; background: var(--bg-secondary); border-radius: var(--radius-sm); border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                  <div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                      <code style="font-size: 0.75rem; color: var(--primary-300);">${s.ticketId || s.issueId || 'SUP'}</code>
+                      <strong style="font-size: 0.9rem; color: var(--text-main);">${s.title}</strong>
+                    </div>
+                    <span style="font-size: 0.78rem; color: var(--text-muted); display: block; margin-top: 0.2rem;">
+                      ${s.department || 'Facilities'} • Requester: ${s.requesterName || s.userId || 'Campus User'}
+                    </span>
+                  </div>
+                  <span class="badge badge-${s.status === 'RESOLVED' || s.status === 'CLOSED' ? 'staff' : s.status === 'IN_PROGRESS' ? 'primary' : 'danger'}" style="font-size: 0.72rem;">
+                    ${s.status || 'OPEN'}
+                  </span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+
+        <!-- 2 Column Layout: AI Agent Activity & System Notifications -->
+        <div class="grid-cols-2" style="margin-bottom: 1.5rem;">
+          <!-- AI Agent Activity (Phase 5) -->
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title"><i data-lucide="cpu" style="color: var(--primary-400);"></i> AI Agent Activity</h3>
+              <a href="#/admin/ai-logs" class="btn btn-ghost btn-sm">All Logs →</a>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+              ${recentLogs.length === 0 ? `
+                <div style="padding: 2rem; text-align: center; color: var(--text-muted); font-size: 0.88rem;">
+                  No data available. AI agent execution traces will appear here.
+                </div>
+              ` : recentLogs.map(l => `
+                <div style="padding: 0.75rem 0.95rem; background: var(--bg-secondary); border-radius: var(--radius-sm); border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                  <div>
+                    <div style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.2rem;">
+                      <span class="badge badge-primary" style="font-size: 0.65rem; padding: 1px 5px;">CampusNova</span>
+                      <strong style="font-size: 0.84rem; color: var(--text-main);">${l.intent || l.action || 'Query Processed'}</strong>
+                    </div>
+                    <p style="font-size: 0.76rem; color: var(--text-muted); margin: 0; max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                      "${l.query || l.target || 'Campus autonomous operation'}"
+                    </p>
+                  </div>
+                  <div style="text-align: right;">
+                    <span class="badge badge-${(l.status === 'COMPLETED' || l.status === 'SUCCESS') ? 'staff' : l.status === 'WAITING_APPROVAL' ? 'admin' : 'primary'}" style="font-size: 0.68rem;">
+                      ${l.status || 'COMPLETED'}
+                    </span>
+                    <span style="display: block; font-size: 0.7rem; color: var(--text-muted); margin-top: 0.2rem;">${l.timestamp || 'Recent'}</span>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+          <!-- System Notifications / Announcements (Phase 5) -->
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title"><i data-lucide="megaphone" style="color: var(--accent-violet);"></i> System Notifications</h3>
+              <a href="#/admin/announcements" class="btn btn-ghost btn-sm">Announcements →</a>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+              ${announcements.length === 0 ? `
+                <div style="padding: 2rem; text-align: center; color: var(--text-muted); font-size: 0.88rem;">
+                  No data available. No broadcast announcements published.
+                </div>
+              ` : announcements.slice(0, 4).map(a => `
+                <div style="padding: 0.75rem 0.95rem; background: var(--bg-secondary); border-radius: var(--radius-sm); border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                  <div>
+                    <strong style="font-size: 0.86rem; color: var(--text-main); display: block;">${a.title}</strong>
+                    <span style="font-size: 0.76rem; color: var(--text-muted);">${a.target || 'All Users'} • ${a.date}</span>
+                  </div>
+                  <span class="badge badge-${a.priority === 'High' ? 'danger' : 'admin'}" style="font-size: 0.68rem;">
+                    ${a.priority || 'Normal'}
+                  </span>
+                </div>
+              `).join('')}
             </div>
           </div>
         </div>
@@ -596,5 +777,34 @@ const AdminViews = {
         </div>
       </div>
     `;
+  },
+
+  // 13. AI Copilot (Atlas & Nova)
+  renderAIAssistant: function() {
+    return AIChatComponent.render('admin');
+  },
+
+  // 14. Admin Knowledge Base & Vector Store
+  renderKnowledgeBase: function() {
+    setTimeout(() => KnowledgeBaseView.loadDocuments(), 50);
+    return KnowledgeBaseView.render();
+  },
+
+  // 15. Service Requests Helpdesk Management
+  renderServiceRequests: function() {
+    setTimeout(() => ServiceRequestsView.loadTickets('admin'), 50);
+    return ServiceRequestsView.render('admin');
+  },
+
+  // 16. AI Multi-Agent Audit Logs & Viva Transparency
+  renderAgentLogs: function() {
+    setTimeout(() => AgentLogsView.loadLogs(), 50);
+    return AgentLogsView.render();
+  },
+
+  // 17. Campus Map
+  renderCampusMap: function() {
+    setTimeout(() => CampusMapView.initMap(), 100);
+    return CampusMapView.render('admin');
   }
 };

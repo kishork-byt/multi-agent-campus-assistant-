@@ -7,7 +7,9 @@ const SidebarComponent = {
     if (portal === 'student') {
       return [
         { id: 'dashboard', label: 'Dashboard', icon: 'layout-dashboard' },
-        { id: 'ai-assistant', label: 'AI Assistant', icon: 'sparkles' },
+        { id: 'ai-assistant', label: 'Astra (Student AI)', icon: 'sparkles' },
+        { id: 'service-requests', label: 'Service Requests', icon: 'life-buoy' },
+        { id: 'campus-map', label: 'Campus Map', icon: 'map' },
         { id: 'community', label: 'Campus Community', icon: 'message-square' },
         { id: 'notifications', label: 'Notifications', icon: 'bell' },
         { id: 'timetable', label: 'Timetable', icon: 'calendar' },
@@ -18,7 +20,9 @@ const SidebarComponent = {
     } else if (portal === 'staff') {
       return [
         { id: 'dashboard', label: 'Dashboard', icon: 'layout-dashboard' },
-        { id: 'ai-assistant', label: 'AI Assistant', icon: 'sparkles' },
+        { id: 'ai-assistant', label: 'Orion (Faculty AI)', icon: 'sparkles' },
+        { id: 'service-requests', label: 'Service Requests', icon: 'life-buoy' },
+        { id: 'campus-map', label: 'Campus Map', icon: 'map' },
         { id: 'community', label: 'Campus Community', icon: 'message-square' },
         { id: 'notifications', label: 'Notifications', icon: 'bell' },
         { id: 'events', label: 'Events', icon: 'calendar-days' },
@@ -29,6 +33,11 @@ const SidebarComponent = {
     } else if (portal === 'admin') {
       return [
         { id: 'dashboard', label: 'Dashboard', icon: 'layout-dashboard' },
+        { id: 'ai-copilot', label: 'Atlas (Admin AI)', icon: 'sparkles' },
+        { id: 'service-requests', label: 'Service Requests', icon: 'life-buoy' },
+        { id: 'knowledge-base', label: 'Knowledge Base', icon: 'database' },
+        { id: 'ai-logs', label: 'AI Multi-Agent Logs', icon: 'cpu' },
+        { id: 'campus-map', label: 'Campus Map', icon: 'map' },
         { id: 'community', label: 'Campus Community', icon: 'message-square' },
         { id: 'community-moderation', label: 'Community Moderation', icon: 'shield-alert' },
         { id: 'students-management', label: 'Students Mgmt', icon: 'users' },

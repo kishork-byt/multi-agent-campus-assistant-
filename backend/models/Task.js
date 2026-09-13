@@ -7,7 +7,10 @@ const taskSchema = new mongoose.Schema(
     priority: { type: String, enum: ["Low", "Medium", "High"], default: "High" },
     dueDate: { type: String, default: "Due Today" },
     desc: { type: String, default: "" },
-    assignedRole: { type: String, default: "staff" }
+    assignedRole: { type: String, default: "staff" },
+    userId: { type: String, default: "STU-2026-894", index: true },
+    reminderTime: { type: String, default: "" },
+    relatedEventId: { type: String, default: "" }
   },
   { timestamps: true }
 );

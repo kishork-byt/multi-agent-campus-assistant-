@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 const notificationSchema = new mongoose.Schema(
   {
     role: { type: String, enum: ["student", "staff", "admin"], required: true },
+    userId: { type: String },
     type: { type: String, enum: ["Academic", "Event", "System", "Faculty", "Community"], default: "Academic" },
     title: { type: String, required: true },
     desc: { type: String, required: true },
